@@ -979,7 +979,478 @@ routes.auditoria = (main) => {
     pendingBox("La base registra la auditoría de cada escritura, pero la API no expone ningún endpoint para consultarla. Esta pantalla se habilitará cuando exista."));
 };
 
-/*@@WIZARD@@*/
+/* ==========================================================================
+   Asistente: Crear vuelo
+   Llamadas reales: POST /admin/flights (si el número es nuevo),
+   POST /admin/departures (una por fecha) y POST /admin/fares (una por familia y fecha).
+   ========================================================================== */
+const MONEY_RE = /^\d{1,10}(\.\d{1,2})?$/;
+const MONEY_MSG = "Escribe un monto como 94.38 (hasta 2 decimales).";
+const CABIN_ES = { ECONOMY: "Económica", PREMIUM_ECONOMY: "Económica premium", BUSINESS: "Ejecutiva", FIRST: "Primera" };
+const WIZ_STEPS = ["Ruta", "Aerolínea y equipo", "Horario", "Cabinas y tarifas", "Revisar y confirmar"];
+const DAY_NAMES = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+let W = newWizardState();
+
+function newWizardState() {
+  return {
+    step: 0, maxStep: 0, origin: "", destination: "", airline: "", model: "", seatMapId: "", seatMaps: [],
+    flightMode: "new", existingFlight: "", number: "",
+    startDate: "", endDate: "", days: [true, true, true, true, true, true, true], depTime: "", arrTime: "", arrPlus: "0", depTerminal: "", arrTerminal: "",
+    cabins: {}, result: null, airports: [], flightsFound: [],
+  };
+}
+const optList = (items, val, lab, placeholder = "Selecciona…") => [{ value: "", label: placeholder }, ...items.map((x) => ({ value: val(x), label: lab(x) }))];
+function addDays(dateStr, n) {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
+}
+function weekday(dateStr) { const [y, m, d] = dateStr.split("-").map(Number); return new Date(Date.UTC(y, m - 1, d)).getUTCDay(); }
+function wizardDates() {
+  if (!W.startDate) return [];
+  const last = W.endDate && W.endDate >= W.startDate ? W.endDate : W.startDate;
+  const out = [];
+  for (let d = W.startDate; d <= last && out.length < 60; d = addDays(d, 1)) {
+    if (!W.endDate || W.days[weekday(d)]) out.push(d);
+  }
+  return out;
+}
+function validateFields(list, all) {
+  let first = null;
+  for (const f of list) if (f.validate(all) && !first) first = f;
+  if (first) first.input.focus();
+  return !first;
+}
+
+routes["crear-vuelo"] = (main) => {
+  if (W.result && W.result.done) W = newWizardState();
+  main.append(pageHead("Crear vuelo", "Asistente en 5 pasos. Las horas se escriben en hora de Ecuador (UTC−5); la API las guarda en UTC."));
+  const progress = h("ol", { class: "steps", "aria-label": "Progreso del asistente" });
+  const body = h("div", { class: "card" });
+  main.append(progress, body);
+  const live = h("div", { class: "sr-only", role: "status", "aria-live": "polite" });
+  main.append(live);
+
+  const renderProgress = () => {
+    clear(progress);
+    WIZ_STEPS.forEach((t, i) => progress.append(h("li", { class: i < W.step ? "done" : "", "aria-current": i === W.step ? "step" : null },
+      h("span", { class: "sr-only", text: i < W.step ? "Completado: " : i === W.step ? "Paso actual: " : "Pendiente: " }), t)));
+    live.textContent = `Paso ${W.step + 1} de ${WIZ_STEPS.length}: ${WIZ_STEPS[W.step]}`;
+  };
+
+  let current = null;
+  const go = async (dir) => {
+    if (dir > 0 && current) {
+      const ok = await current.validate();
+      if (!ok) return;
+      current.collect();
+    } else if (current) current.collect();
+    W.step = Math.max(0, Math.min(WIZ_STEPS.length - 1, W.step + dir));
+    show();
+  };
+  const show = async () => {
+    renderProgress();
+    clear(body);
+    body.append(h("h2", { text: `Paso ${W.step + 1}: ${WIZ_STEPS[W.step]}`, style: "margin-top:0" }));
+    const stepBox = h("div");
+    body.append(stepBox);
+    const builders = [stepRoute, stepAirline, stepSchedule, stepCabins, stepReview];
+    current = null;
+    try { current = await builders[W.step](stepBox, { go, refresh: show }); }
+    catch (e) { stepBox.append(alertBox("error", friendly(e))); }
+    if (W.step < WIZ_STEPS.length - 1) {
+      body.append(h("div", { class: "actions", style: "margin-top:1rem" },
+        W.step > 0 ? h("button", { class: "btn", type: "button", text: "Atrás", onclick: () => go(-1) }) : null,
+        h("button", { class: "btn btn-primary", type: "button", text: "Siguiente", onclick: () => go(1) })));
+    }
+    const h2 = $("h2", body); if (h2) { h2.setAttribute("tabindex", "-1"); h2.focus(); }
+  };
+  show();
+};
+
+/* ----- Paso 1: Ruta ----- */
+async function stepRoute(box) {
+  box.append(h("p", { text: "Elige el aeropuerto de origen y el de destino del catálogo." }));
+  const airports = await cached("airports", () => loadAll("/admin/airports"));
+  W.airports = airports;
+  const opts = optList(airports, (a) => a.code, (a) => `${a.code} — ${a.name} (${a.cityName})`);
+  const origin = mkField({ name: "origin", label: "Origen", type: "select", required: true, options: opts }, W.origin);
+  const dest = mkField({ name: "destination", label: "Destino", type: "select", required: true, options: opts,
+    custom: (v) => (v === origin.get() ? "El destino debe ser distinto del origen." : "") }, W.destination);
+  origin.input.addEventListener("change", () => { if (dest.get()) dest.validate(); });
+  box.append(h("div", { class: "grid2" }, origin.el, dest.el));
+  if (!airports.length) box.append(alertBox("warn", "No hay aeropuertos activos. Créalos primero en Catálogo → Aeropuertos."));
+  return {
+    validate: () => validateFields([origin, dest]),
+    collect: () => { if (W.origin !== origin.get() || W.destination !== dest.get()) { W.existingFlight = ""; W.flightsFound = []; } W.origin = origin.get(); W.destination = dest.get(); },
+  };
+}
+
+/* ----- Paso 2: Aerolínea, equipo, mapa de asientos y número de vuelo ----- */
+async function stepAirline(box) {
+  box.append(h("p", { text: "Elige la aerolínea y el equipo; después el mapa de asientos (define las cabinas) y el número de vuelo." }));
+  const [airlines, models] = await Promise.all([cached("airlines", () => loadAll("/admin/airlines")), cached("models", () => loadAll("/admin/aircraft-models"))]);
+  const airline = mkField({ name: "airline", label: "Aerolínea", type: "select", required: true, options: optList(airlines, (a) => a.code, (a) => `${a.code} — ${a.name}`) }, W.airline);
+  const model = mkField({ name: "model", label: "Equipo (aeronave)", type: "select", required: true, options: optList(models, (m) => m.code, (m) => `${m.name} (${m.code})`) }, W.model);
+  const seat = mkField({ name: "seatMapId", label: "Mapa de asientos", type: "select", required: true, options: [{ value: "", label: "Elige aerolínea y equipo primero" }],
+    hint: "Define las cabinas físicas del avión." }, W.seatMapId);
+  const seatNote = h("div");
+  box.append(h("div", { class: "grid2" }, airline.el, model.el), seat.el, seatNote);
+
+  const loadSeatMaps = async () => {
+    clear(seatNote);
+    if (!airline.get() || !model.get()) { seat.setOptions([{ value: "", label: "Elige aerolínea y equipo primero" }], false); return; }
+    seat.setOptions([{ value: "", label: "Cargando…" }], false);
+    try {
+      const maps = await loadAll("/admin/seat-maps", { airline: airline.get(), aircraftModel: model.get() });
+      W.seatMaps = maps;
+      seat.setOptions(optList(maps, (m) => m.id, (m) => `${m.name} — ${m.cabins.map((c) => `${CABIN_ES[c.cabinClass] || c.cabinClass} ${c.seats}`).join(" / ")}`), false);
+      if (maps.some((m) => m.id === W.seatMapId)) seat.set(W.seatMapId);
+      else if (maps.length === 1) seat.set(maps[0].id);
+      if (!maps.length) seatNote.append(alertBox("warn", "No hay un mapa de asientos activo para esa aerolínea y ese equipo. La creación de mapas todavía no está en este panel (se hace por la API)."));
+    } catch (e) { seat.setOptions([{ value: "", label: "No se pudo cargar" }], false); seatNote.append(alertBox("error", friendly(e))); }
+  };
+  airline.input.addEventListener("change", () => { W.seatMapId = ""; loadSeatMaps(); loadFlights(); });
+  model.input.addEventListener("change", () => { W.seatMapId = ""; loadSeatMaps(); });
+
+  // Número de vuelo: existente (misma aerolínea y ruta) o nuevo
+  const flightBox = h("fieldset", {}, h("legend", { text: "Número de vuelo" }));
+  const modeNew = h("input", { type: "radio", name: "fmode", id: "fm-new", value: "new" });
+  const modeEx = h("input", { type: "radio", name: "fmode", id: "fm-ex", value: "existing" });
+  const exSel = mkField({ name: "existingFlight", label: "Vuelo existente de esta ruta", type: "select", required: true, options: [{ value: "", label: "—" }] }, W.existingFlight);
+  const num = mkField({ name: "number", label: "Número nuevo (1 a 4 dígitos)", type: "number", required: true, max: 4, pattern: /^[1-9][0-9]{0,3}$/,
+    msg: "Escribe de 1 a 4 dígitos, sin ceros a la izquierda (ej. 1500).", hint: "Se une al código de la aerolínea: AV + 1500 = AV1500." }, W.number);
+  const exWrap = h("div", { style: "margin-left:2rem" }, exSel.el);
+  const newWrap = h("div", { style: "margin-left:2rem" }, num.el);
+  flightBox.append(h("div", { class: "check" }, modeNew, h("label", { for: "fm-new", text: "Crear un número de vuelo nuevo para esta ruta" })), newWrap,
+    h("div", { class: "check" }, modeEx, h("label", { for: "fm-ex", text: "Usar un vuelo que ya existe en esta ruta" })), exWrap);
+  box.append(flightBox);
+  const applyMode = () => {
+    const ex = modeEx.checked;
+    exWrap.style.display = ex ? "" : "none"; newWrap.style.display = ex ? "none" : "";
+  };
+  modeNew.checked = W.flightMode !== "existing"; modeEx.checked = W.flightMode === "existing";
+  modeNew.addEventListener("change", applyMode); modeEx.addEventListener("change", applyMode);
+  applyMode();
+  const loadFlights = async () => {
+    if (!airline.get()) return;
+    try {
+      const fl = await loadAll("/admin/flights", { airline: airline.get(), origin: W.origin, destination: W.destination });
+      W.flightsFound = fl;
+      exSel.setOptions(optList(fl, (f) => f.flightNumber, (f) => `${f.flightNumber} (${f.origin} → ${f.destination})`, fl.length ? "Selecciona…" : "No hay vuelos en esta ruta"), false);
+      if (fl.some((f) => f.flightNumber === W.existingFlight)) exSel.set(W.existingFlight);
+      if (!fl.length) { modeNew.checked = true; modeEx.checked = false; modeEx.disabled = true; applyMode(); } else modeEx.disabled = false;
+    } catch (e) { box.append(alertBox("error", friendly(e))); }
+  };
+  await Promise.all([loadSeatMaps(), loadFlights()]);
+
+  return {
+    async validate() {
+      const useEx = modeEx.checked;
+      const list = [airline, model, seat, useEx ? exSel : num];
+      if (!validateFields(list)) return false;
+      if (!useEx) {
+        const fn = airline.get() + num.get();
+        try {
+          const f = await api("GET", `/admin/flights/${fn}`);
+          num.showError(`El vuelo ${fn} ya existe${f.active ? "" : " (dado de baja)"} con la ruta ${f.origin} → ${f.destination}. Usa "un vuelo que ya existe" o elige otro número.`);
+          num.input.focus(); return false;
+        } catch (e) {
+          if (!(e instanceof ApiError && e.status === 404)) { box.prepend(alertBox("error", friendly(e))); return false; }
+        }
+      }
+      return true;
+    },
+    collect() {
+      W.airline = airline.get(); W.model = model.get(); W.seatMapId = seat.get();
+      W.flightMode = modeEx.checked ? "existing" : "new"; W.existingFlight = exSel.get(); W.number = num.get();
+    },
+  };
+}
+
+/* ----- Paso 3: Horario ----- */
+async function stepSchedule(box) {
+  box.append(h("p", { text: "Define el horario en hora de Ecuador. Para repetir el vuelo varios días, indica una fecha final y los días de la semana." }));
+  const startDate = mkField({ name: "startDate", label: "Primera fecha de salida", type: "date", required: true,
+    custom: (v) => (v < todayEC() ? "La fecha no puede estar en el pasado." : "") }, W.startDate);
+  const endDate = mkField({ name: "endDate", label: "Repetir hasta (opcional)", type: "date", hint: "Déjalo vacío para crear una sola salida.",
+    custom: (v, all) => (all.startDate && v < all.startDate ? "Debe ser igual o posterior a la primera fecha." : "") }, W.endDate);
+  const depTime = mkField({ name: "depTime", label: "Hora de salida", type: "time", required: true }, W.depTime);
+  const arrTime = mkField({ name: "arrTime", label: "Hora de llegada", type: "time", required: true,
+    custom: (v, all) => (all.arrPlus === "0" && all.depTime && v <= all.depTime ? "La llegada debe ser posterior a la salida. Si llega al día siguiente, elige \"+1 día\"." : "") }, W.arrTime);
+  const arrPlus = mkField({ name: "arrPlus", label: "Día de llegada", type: "select", options: [{ value: "0", label: "Mismo día" }, { value: "1", label: "+1 día" }, { value: "2", label: "+2 días" }] }, W.arrPlus);
+  const depT = mkField({ name: "depTerminal", label: "Terminal de salida (opcional)", max: 10 }, W.depTerminal);
+  const arrT = mkField({ name: "arrTerminal", label: "Terminal de llegada (opcional)", max: 10 }, W.arrTerminal);
+  const fs = { startDate, endDate, depTime, arrTime, arrPlus, depTerminal: depT, arrTerminal: arrT };
+  const all = () => Object.fromEntries(Object.entries(fs).map(([k, f]) => [k, f.get()]));
+  Object.values(fs).forEach((f) => (f.all = all));
+  startDate.input.min = todayEC();
+
+  const daysBox = h("fieldset", {}, h("legend", { text: "Días de la semana en que opera" }));
+  const dayInputs = DAY_NAMES.map((n, i) => {
+    const c = h("input", { type: "checkbox", id: `day-${i}`, checked: W.days[i] });
+    daysBox.append(h("div", { class: "check", style: "display:inline-flex;margin-right:1rem" }, c, h("label", { for: `day-${i}`, text: n })));
+    return c;
+  });
+  const preview = h("div", { class: "alert alert-info", role: "status", "aria-live": "polite" });
+  box.append(h("div", { class: "grid2" }, startDate.el, endDate.el), daysBox, h("div", { class: "grid2" }, depTime.el, arrTime.el, arrPlus.el), h("div", { class: "grid2" }, depT.el, arrT.el), preview);
+  const syncDays = () => { daysBox.style.display = endDate.get() ? "" : "none"; };
+  const updatePreview = () => {
+    const snap = () => { W.startDate = startDate.get(); W.endDate = endDate.get(); W.days = dayInputs.map((c) => c.checked); };
+    snap(); syncDays();
+    const ds = wizardDates();
+    if (!ds.length) { preview.textContent = "Elige la fecha y la hora para ver cuántas salidas se crearán."; return; }
+    const t = depTime.get() && arrTime.get() ? ` · salida ${depTime.get()} → llegada ${arrTime.get()}${arrPlus.get() !== "0" ? " (+" + arrPlus.get() + ")" : ""}` : "";
+    preview.textContent = `Se crearán ${ds.length} salida${ds.length === 1 ? "" : "s"}: ${ds.length > 6 ? ds.slice(0, 3).join(", ") + " … " + ds.slice(-1) : ds.join(", ")}${t} (hora de Ecuador).`;
+  };
+  [startDate, endDate, depTime, arrTime, arrPlus].forEach((f) => f.input.addEventListener("input", updatePreview));
+  [startDate, endDate, depTime, arrTime, arrPlus].forEach((f) => f.input.addEventListener("change", updatePreview));
+  dayInputs.forEach((c) => c.addEventListener("change", updatePreview));
+  updatePreview();
+
+  return {
+    validate() {
+      if (!validateFields(Object.values(fs), all())) return false;
+      W.startDate = startDate.get(); W.endDate = endDate.get(); W.days = dayInputs.map((c) => c.checked);
+      const ds = wizardDates();
+      if (!ds.length) { daysBox.prepend(alertBox("error", "Ningún día de la semana coincide con el rango. Marca al menos un día válido.")); return false; }
+      if (ds.length > 31) { endDate.showError("Máximo 31 salidas por vez. Acorta el rango."); endDate.input.focus(); return false; }
+      const first = ecToUtcIso(ds[0], depTime.get());
+      if (new Date(first) <= new Date()) { depTime.showError("La primera salida debe ser en el futuro."); depTime.input.focus(); return false; }
+      return true;
+    },
+    collect() {
+      W.startDate = startDate.get(); W.endDate = endDate.get(); W.days = dayInputs.map((c) => c.checked);
+      W.depTime = depTime.get(); W.arrTime = arrTime.get(); W.arrPlus = arrPlus.get(); W.depTerminal = depT.get(); W.arrTerminal = arrT.get();
+    },
+  };
+}
+
+/* ----- Paso 4: Cabinas, inventario y familias tarifarias ----- */
+async function stepCabins(box) {
+  const sm = W.seatMaps.find((m) => m.id === W.seatMapId);
+  if (!sm) { box.append(alertBox("error", "Vuelve al paso 2 y elige un mapa de asientos.")); return { validate: () => false, collect() {} }; }
+  box.append(h("p", { text: "Para cada cabina indica el cupo a vender y las familias tarifarias con su precio. Los montos son texto con 2 decimales. Debes vender al menos una familia en una cabina." }));
+  const fams = await cached("fam:" + W.airline, () => loadAll("/admin/fare-families", { airline: W.airline }));
+  const currency = mkField({ name: "currency", label: "Moneda (ISO 4217)", required: true, max: 3, upper: true, pattern: /^[A-Z]{3}$/, msg: "Usa 3 letras mayúsculas, por ejemplo USD." }, W.currency || "USD");
+  box.append(h("div", { class: "grid2" }, currency.el));
+  const allFields = [];
+  const model = [];
+  for (const cab of sm.cabins) {
+    const saved = W.cabins[cab.cabinClass] || {};
+    const on = h("input", { type: "checkbox", id: nextId("cab"), checked: saved.on !== undefined ? saved.on : true });
+    const seats = mkField({ name: "seats-" + cab.cabinClass, label: `Cupo a vender (máximo ${cab.seats})`, type: "number", required: true, min: 1, maxVal: cab.seats, max: 3 }, saved.seats || String(cab.seats));
+    const cabFs = h("fieldset", {}, h("legend", { text: `${CABIN_ES[cab.cabinClass] || cab.cabinClass} · ${cab.seats} asientos` }));
+    const inner = h("div");
+    cabFs.append(h("div", { class: "check" }, on, h("label", { for: on.id, text: "Vender esta cabina en el vuelo" })), inner);
+    inner.append(seats.el);
+    const famRows = [];
+    const cabFams = fams.filter((f) => f.cabinClass === cab.cabinClass);
+    if (!cabFams.length) inner.append(alertBox("warn", "No hay familias tarifarias activas para esta cabina en esta aerolínea. Créalas en Catálogo → Familias tarifarias; sin ellas la cabina no tendrá precio."));
+    for (const fam of cabFams) {
+      const sv = (saved.fams || {})[fam.id] || {};
+      const fon = h("input", { type: "checkbox", id: nextId("fam"), checked: !!sv.on });
+      const money = (name, label, req, val) => mkField({ name, label, required: req, pattern: MONEY_RE, msg: MONEY_MSG, max: 13, inputmode: "decimal" }, val);
+      const f = {
+        fam, on: fon,
+        adultB: money("adultB", "Adulto · tarifa base", true, sv.adultB), adultT: money("adultT", "Adulto · impuestos", true, sv.adultT),
+        childB: money("childB", "Niño · tarifa base (opcional)", false, sv.childB), childT: money("childT", "Niño · impuestos", false, sv.childT),
+        infB: money("infB", "Infante · tarifa base (opcional)", false, sv.infB), infT: money("infT", "Infante · impuestos", false, sv.infT),
+        bag: money("bag", "Precio de maleta extra", true, sv.bag !== undefined ? sv.bag : "35.00"), fee: money("fee", "Cargo por cambio (opcional)", false, sv.fee),
+      };
+      // Niño e infante: ambos montos o ninguno
+      f.childT.spec.custom = (v) => (f.childB.get() && !v ? "Falta el monto de impuestos." : "");
+      f.childB.spec.custom = (v) => (f.childT.get() && !v ? "Falta la tarifa base." : "");
+      f.infT.spec.custom = (v) => (f.infB.get() && !v ? "Falta el monto de impuestos." : "");
+      f.infB.spec.custom = (v) => (f.infT.get() && !v ? "Falta la tarifa base." : "");
+      const totalEl = h("p", { role: "status", "aria-live": "polite", style: "font-weight:600" });
+      const upd = () => {
+        const a = Number(f.adultB.get()) + Number(f.adultT.get());
+        totalEl.textContent = MONEY_RE.test(f.adultB.get()) && MONEY_RE.test(f.adultT.get()) ? `Total adulto: ${a.toFixed(2)} ${currency.get() || ""}` : "";
+      };
+      const priceBox = h("div", { style: "margin-left:2rem" }, h("div", { class: "grid2" }, f.adultB.el, f.adultT.el, f.childB.el, f.childT.el, f.infB.el, f.infT.el, f.bag.el, f.fee.el), totalEl);
+      const sync = () => { priceBox.style.display = fon.checked ? "" : "none"; upd(); };
+      fon.addEventListener("change", sync);
+      [f.adultB, f.adultT, currency].forEach((x) => x.input.addEventListener("input", upd));
+      sync();
+      const code = `${fam.name} (${fam.code}) · ${fam.changeable ? "cambiable" : "no cambiable"} · ${fam.checkedBagsIncluded} maleta(s) bodega`;
+      inner.append(h("div", { class: "check" }, fon, h("label", { for: fon.id, text: `Vender con ${code}` })), priceBox);
+      famRows.push(f);
+    }
+    const syncCab = () => { inner.style.display = on.checked ? "" : "none"; };
+    on.addEventListener("change", syncCab); syncCab();
+    box.append(cabFs);
+    model.push({ cab, on, seats, famRows });
+  }
+  const summary = h("div");
+  box.append(summary);
+
+  return {
+    validate() {
+      clear(summary);
+      if (!validateFields([currency])) return false;
+      const actives = model.filter((m) => m.on.checked);
+      if (!actives.length) { summary.append(alertBox("error", "Activa al menos una cabina.")); return false; }
+      let anyFam = false;
+      for (const m of actives) {
+        if (!validateFields([m.seats])) return false;
+        for (const f of m.famRows) {
+          if (!f.on.checked) continue;
+          anyFam = true;
+          if (!validateFields([f.adultB, f.adultT, f.childB, f.childT, f.infB, f.infT, f.bag, f.fee])) return false;
+        }
+      }
+      if (!anyFam) { summary.append(alertBox("error", "Elige al menos una familia tarifaria con su precio: sin tarifa el vuelo no se puede vender.")); return false; }
+      return true;
+    },
+    collect() {
+      W.currency = currency.get();
+      W.cabins = {};
+      for (const m of model) {
+        const fm = {};
+        for (const f of m.famRows) {
+          fm[f.fam.id] = { on: f.on.checked, adultB: f.adultB.get(), adultT: f.adultT.get(), childB: f.childB.get(), childT: f.childT.get(), infB: f.infB.get(), infT: f.infT.get(), bag: f.bag.get(), fee: f.fee.get(), name: f.fam.name, code: f.fam.code };
+        }
+        W.cabins[m.cab.cabinClass] = { on: m.on.checked, seats: m.seats.get(), fams: fm };
+      }
+      W.famList = fams;
+    },
+  };
+}
+
+/* ----- Paso 5: Revisión y confirmación ----- */
+function wizardPlan() {
+  const flightNumber = W.flightMode === "existing" ? W.existingFlight : W.airline + W.number;
+  const dates = wizardDates();
+  const cabins = Object.entries(W.cabins).filter(([, c]) => c.on).map(([cabinClass, c]) => ({ cabinClass, totalSeats: Number(c.seats) }));
+  const fares = [];
+  for (const [cabinClass, c] of Object.entries(W.cabins)) {
+    if (!c.on) continue;
+    for (const [fareFamilyId, f] of Object.entries(c.fams)) {
+      if (!f.on) continue;
+      const prices = [{ passengerType: "ADULT", baseFare: f.adultB, taxes: f.adultT }];
+      if (f.childB && f.childT) prices.push({ passengerType: "CHILD", baseFare: f.childB, taxes: f.childT });
+      if (f.infB && f.infT) prices.push({ passengerType: "INFANT", baseFare: f.infB, taxes: f.infT });
+      const body = { fareFamilyId, currency: W.currency, extraBagPrice: f.bag, prices };
+      if (f.fee) body.changeFee = f.fee;
+      fares.push({ cabinClass, name: f.name, code: f.code, body });
+    }
+  }
+  const departures = dates.map((d) => {
+    const body = {
+      flightNumber, seatMapId: W.seatMapId,
+      scheduledDeparture: ecToUtcIso(d, W.depTime), scheduledArrival: ecToUtcIso(d, W.arrTime, Number(W.arrPlus)), cabins,
+    };
+    if (W.depTerminal) body.departureTerminal = W.depTerminal;
+    if (W.arrTerminal) body.arrivalTerminal = W.arrTerminal;
+    return { date: d, body };
+  });
+  return { flightNumber, departures, fares, cabins };
+}
+
+async function stepReview(box, ctx) {
+  const plan = wizardPlan();
+  const ap = (code) => { const a = W.airports.find((x) => x.code === code); return a ? `${code} — ${a.name}` : code; };
+  const sm = W.seatMaps.find((m) => m.id === W.seatMapId);
+  const retry = () => ctx.refresh();
+  box.append(h("p", { text: "Revisa el resumen. Al confirmar se crean, en orden: el número de vuelo (si es nuevo), las salidas y las tarifas de cada salida." }));
+  box.append(h("dl", { class: "dl" },
+    h("dt", { text: "Ruta" }), h("dd", { text: `${ap(W.origin)}  →  ${ap(W.destination)}` }),
+    h("dt", { text: "Número de vuelo" }), h("dd", { text: `${plan.flightNumber} ${W.flightMode === "new" ? "(se creará)" : "(existente)"}` }),
+    h("dt", { text: "Aerolínea y equipo" }), h("dd", { text: `${W.airline} · ${W.model}` }),
+    h("dt", { text: "Mapa de asientos" }), h("dd", { text: sm ? sm.name : W.seatMapId }),
+    h("dt", { text: "Salidas" }), h("dd", { text: `${plan.departures.length}: ${plan.departures.map((d) => d.date).slice(0, 8).join(", ")}${plan.departures.length > 8 ? "…" : ""}` }),
+    h("dt", { text: "Horario" }), h("dd", { text: `Sale ${W.depTime}, llega ${W.arrTime}${W.arrPlus !== "0" ? " (+" + W.arrPlus + " día)" : ""} · hora de Ecuador` }),
+    h("dt", { text: "Primera salida" }), h("dd", { text: `${fmtEC(plan.departures[0].body.scheduledDeparture)} (guardada como ${plan.departures[0].body.scheduledDeparture} UTC)` }),
+    h("dt", { text: "Cabinas" }), h("dd", { text: plan.cabins.map((c) => `${CABIN_ES[c.cabinClass]}: ${c.totalSeats} cupos`).join(" · ") })));
+  const rows = plan.fares.map((f) => {
+    const a = f.body.prices[0];
+    return h("tr", {}, h("td", { text: CABIN_ES[f.cabinClass] }), h("td", { text: `${f.name} (${f.code})` }),
+      h("td", { text: `${(Number(a.baseFare) + Number(a.taxes)).toFixed(2)} ${W.currency}` }), h("td", { text: f.body.prices.map((p) => p.passengerType).join(", ") }), h("td", { text: f.body.extraBagPrice }));
+  });
+  box.append(h("h3", { text: "Tarifas por salida" }),
+    h("div", { class: "table-wrap" }, h("table", {}, h("caption", { text: `Se crearán ${plan.fares.length * plan.departures.length} tarifas en total` }),
+      h("thead", {}, h("tr", {}, ["Cabina", "Familia", "Total adulto", "Pasajeros", "Maleta extra"].map((t) => h("th", { scope: "col", text: t })))), h("tbody", {}, rows))));
+
+  const logBox = h("ul", { class: "progress-list", "aria-label": "Avance de la creación" });
+  const outBox = h("div", { role: "status", "aria-live": "polite" });
+  const confirmBtn = h("button", { class: "btn btn-primary", type: "button", text: "Confirmar y crear vuelo" });
+  const backBtn = h("button", { class: "btn", type: "button", text: "Atrás", onclick: () => ctx.go(-1) });
+  box.append(h("div", { class: "actions", style: "margin-top:1rem" }, backBtn, confirmBtn), outBox, logBox);
+  confirmBtn.addEventListener("click", async () => {
+    confirmBtn.disabled = backBtn.disabled = true;
+    clear(outBox);
+    try {
+      await executePlan(plan, (msg) => logBox.append(h("li", { text: msg })));
+      W.result.done = true;
+      confirmBtn.remove(); backBtn.remove();
+      outBox.append(successPanel(plan));
+      outBox.querySelector("h3")?.focus?.();
+    } catch (e) {
+      outBox.append(alertBox("error", `${e.stepLabel ? e.stepLabel + ": " : ""}${friendly(e)} Lo ya creado se conserva; al reintentar solo se crea lo que falta.`));
+      confirmBtn.textContent = "Reintentar lo pendiente";
+      confirmBtn.disabled = backBtn.disabled = false;
+    }
+  });
+  return { validate: () => true, collect() {} };
+}
+
+async function withRetry429(fn, say) {
+  for (let i = 0; ; i++) {
+    try { return await fn(); }
+    catch (e) {
+      if (!(e instanceof ApiError) || e.status !== 429 || i >= 3) throw e;
+      const wait = Math.min(Math.max(parseInt(e.retryAfter, 10) || 5, 1), 65);
+      say(`Límite de solicitudes: esperando ${wait} s para continuar…`);
+      await new Promise((r) => setTimeout(r, wait * 1000));
+    }
+  }
+}
+
+async function executePlan(plan, say) {
+  const R = (W.result = W.result || { flightCreated: false, deps: [], done: false, flightNumber: plan.flightNumber });
+  const call = async (label, method, path, body) => {
+    try { return await withRetry429(() => api(method, path, { body }), say); }
+    catch (e) { if (e instanceof ApiError) e.stepLabel = label; throw e; }
+  };
+  if (W.flightMode === "new" && !R.flightCreated) {
+    say(`Creando el vuelo ${plan.flightNumber}…`);
+    await call(`Vuelo ${plan.flightNumber}`, "POST", "/admin/flights", { marketingCarrier: W.airline, number: W.number, origin: W.origin, destination: W.destination });
+    R.flightCreated = true;
+    invalidateCache();
+    say(`✔ Vuelo ${plan.flightNumber} creado.`);
+  }
+  for (let i = 0; i < plan.departures.length; i++) {
+    const d = plan.departures[i];
+    R.deps[i] = R.deps[i] || { date: d.date, id: null, fares: {} };
+    const slot = R.deps[i];
+    if (!slot.id) {
+      say(`Creando la salida del ${d.date}…`);
+      const dep = await call(`Salida del ${d.date}`, "POST", "/admin/departures", d.body);
+      slot.id = dep.id;
+      say(`✔ Salida ${d.date} creada (${dep.id}).`);
+    }
+    for (const f of plan.fares) {
+      if (slot.fares[f.body.fareFamilyId]) continue;
+      say(`Creando tarifa ${f.code} para ${d.date}…`);
+      const fare = await call(`Tarifa ${f.code} del ${d.date}`, "POST", "/admin/fares", { departureId: slot.id, ...f.body });
+      slot.fares[f.body.fareFamilyId] = fare.id;
+    }
+    say(`✔ ${plan.fares.length} tarifa(s) listas para ${d.date}.`);
+  }
+}
+
+function successPanel(plan) {
+  const R = W.result;
+  const rows = R.deps.map((d) => h("tr", {}, h("td", { text: d.date }), h("td", { text: d.id }), h("td", { text: String(Object.keys(d.fares).length) })));
+  return h("div", { class: "alert alert-ok", style: "margin-top:1rem" },
+    h("h3", { tabindex: "-1", text: `Vuelo ${plan.flightNumber} creado` , style: "margin-top:0" }),
+    h("p", { text: `Se crearon ${R.deps.length} salida(s) con sus tarifas.` }),
+    h("div", { class: "table-wrap" }, h("table", {}, h("caption", { text: "Identificadores creados" }),
+      h("thead", {}, h("tr", {}, ["Fecha (Ecuador)", "Identificador de la salida", "Tarifas"].map((t) => h("th", { scope: "col", text: t })))), h("tbody", {}, rows))),
+    h("div", { class: "actions", style: "margin-top:.75rem" },
+      h("a", { class: "btn btn-primary", href: `#/lista/departures?flightNumber=${encodeURIComponent(plan.flightNumber)}`, text: "Ver en la lista" }),
+      h("button", { class: "btn", type: "button", text: "Crear otro vuelo", onclick: () => { W = newWizardState(); route(); } })));
+}
 /*@@LISTS@@*/
 
 /* ---------- Arranque ---------- */
