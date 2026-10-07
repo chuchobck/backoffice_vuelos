@@ -75,6 +75,7 @@ Marcadas en la interfaz con la etiqueta *Pendiente*; no se inventó ningún endp
 
 - **Reservas**: la API solo tiene `GET /bookings` con las reservas del usuario autenticado; no hay un
   listado de administración con las reservas de todos los clientes.
+- **Crear administradores**: no existe endpoint. `POST /auth/register` es público y solo crea clientes, y no hay ruta para asignar el rol de administrador. La pantalla *Administradores* funciona solo en modo demo; con la API real muestra el contrato propuesto: `POST /admin/users` con `{ email, password }`, que cree el usuario con rol administrador, solo con `flights:admin` (409 si el correo existe).
 - **Auditoría**: la base registra la auditoría de cada escritura, pero la API no expone un endpoint de
   consulta.
 

@@ -627,6 +627,17 @@ async function demoRequest(method, path, { body, query } = {}) {
   const d = demoDB;
   if (path === "/auth/me") return { id: "demo", email: session.user?.email || "demo@quinde.example", roles: ["administrador"], scopes: ["flights:admin"], createdAt: new Date().toISOString() };
   if (path === "/auth/logout") return null;
+  if (path === "/admin/users") {
+    d.users = d.users || [{ id: crypto.randomUUID(), email: session.user?.email || "demo@quinde.example", roles: ["administrador"], createdAt: new Date().toISOString() }];
+    if (method === "GET") return { items: d.users.map((u) => ({ ...u })) };
+    if (method === "POST") {
+      const email = String(body.email || "").toLowerCase();
+      if (d.users.some((u) => u.email === email)) throw demoProblem(409, "A user with that email already exists");
+      const row = { id: crypto.randomUUID(), email, roles: ["administrador"], createdAt: new Date().toISOString() };
+      d.users.push(row);
+      return { ...row };
+    }
+  }
   const m = /^\/admin\/([a-z-]+)(?:\/([^/]+))?(?:\/(reactivate))?$/.exec(path);
   if (!m || !demoKey[m[1]]) throw new ApiError(404, { detail: "Not found" });
   const [, ent, id, react] = m;
@@ -808,6 +819,7 @@ const NAV = [
     { id: "lista/countries", label: "Países", hash: "#/lista/countries" },
   ] },
   { group: "Control", items: [
+    { id: "usuarios", label: "Administradores", hash: "#/usuarios", tag: "Pendiente" },
     { id: "auditoria", label: "Auditoría", hash: "#/auditoria", tag: "Pendiente" },
   ] },
 ];
@@ -979,6 +991,46 @@ routes.reservas = (main) => {
 routes.auditoria = (main) => {
   main.append(pageHead("Auditoría", "Bitácora de cambios (solo lectura)."),
     pendingBox("La base registra la auditoría de cada escritura, pero la API no expone ningún endpoint para consultarla. Esta pantalla se habilitará cuando exista."));
+};
+
+
+/* ---------- Administradores: crear un usuario administrador ---------- */
+routes.usuarios = (main) => {
+  main.append(pageHead("Administradores", "Crea cuentas de administrador (acceso completo al backoffice)."));
+  if (!session.demo) {
+    main.append(pendingBox("La API no tiene un endpoint para crear administradores: POST /auth/register es público y solo crea cuentas de cliente, y no existe una ruta para asignar el rol de administrador. Endpoint que hace falta (propuesto): POST /admin/users con { email, password } que cree el usuario con el rol administrador, solo con scope flights:admin (409 si el correo ya existe). Mientras tanto la pantalla funciona únicamente en modo demo."));
+    return;
+  }
+  main.append(alertBox("info", "Modo demo: el usuario se crea solo en esta pestaña; la API real todavía no ofrece esta operación."));
+  const listBox = h("div");
+  const loadList = async () => {
+    try {
+      const { items } = await api("GET", "/admin/users");
+      clear(listBox).append(h("div", { class: "table-wrap" }, h("table", {}, h("caption", { text: `${items.length} administrador(es)` }),
+        h("thead", {}, h("tr", {}, ["Correo", "Rol", "Creado (Ecuador)"].map((t) => h("th", { scope: "col", text: t })))),
+        h("tbody", {}, items.map((u) => h("tr", {}, h("td", { text: u.email }), h("td", { text: "Administrador" }), h("td", { text: fmtEC(u.createdAt) })))))));
+    } catch (e) { clear(listBox).append(alertBox("error", friendly(e))); }
+  };
+  const ok = h("div", { role: "status", "aria-live": "polite" });
+  const form = mkForm([
+    { name: "email", label: "Correo electrónico", type: "email", required: true, max: 254, autocomplete: "off", inputmode: "email",
+      pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, msg: "Escribe un correo válido, por ejemplo nombre@dominio.com." },
+    { name: "password", label: "Contraseña", type: "password", required: true, autocomplete: "new-password", hint: "De 12 a 128 caracteres.",
+      custom: (v) => (v.length < 12 || v.length > 128 ? "La contraseña tiene entre 12 y 128 caracteres." : "") },
+    { name: "password2", label: "Repite la contraseña", type: "password", required: true, autocomplete: "new-password",
+      custom: (v, all) => (v !== all.password ? "Las contraseñas no coinciden." : "") },
+  ], {}, {
+    submitLabel: "Crear administrador",
+    onSubmit: async (v, f) => {
+      const u = await api("POST", "/admin/users", { body: { email: v.email, password: v.password } });
+      clear(ok).append(alertBox("ok", `Administrador ${u.email} creado.`));
+      for (const k of Object.keys(f)) { f[k].set(""); f[k].showError(""); }
+      await loadList();
+    },
+  });
+  form.fields.password.input.addEventListener("input", () => { if (form.fields.password2.get()) form.fields.password2.validate(form.all()); });
+  main.append(h("div", { class: "card", style: "max-width:520px" }, h("h2", { text: "Nuevo administrador", style: "margin-top:0" }), ok, form.el), listBox);
+  loadList();
 };
 
 /* ==========================================================================
