@@ -26,6 +26,8 @@ a{color:var(--primary);text-decoration:underline}
 .sidebar :focus-visible,.topbar :focus-visible,.login-card .btn-primary:focus-visible{outline-color:var(--focus-dark)}
 .skip{position:absolute;left:-999px;top:0;background:#fff;color:var(--primary);padding:.75rem 1rem;z-index:100;font-weight:600}
 .skip:focus{left:8px;top:8px}
+.linklist{padding-left:1.2rem}
+.linklist a{display:inline-flex;align-items:center;min-height:44px}
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
 /* Botones: objetivos de al menos 44 px */
@@ -45,7 +47,7 @@ a{color:var(--primary);text-decoration:underline}
 .field label,.field .lbl{display:block;font-weight:600;margin-bottom:.25rem}
 .field .req{color:var(--error)}
 .field .hint{display:block;color:var(--muted);font-size:.875rem;margin-top:.2rem}
-input[type=text],input[type=email],input[type=password],input[type=number],input[type=date],input[type=time],input[type=datetime-local],select{
+input[type=text],input[type=search],input[type=email],input[type=password],input[type=number],input[type=date],input[type=time],input[type=datetime-local],select{
   font:inherit;width:100%;min-height:44px;padding:.5rem .65rem;border:1px solid #6b7686;border-radius:6px;background:#fff;color:var(--text)}
 input[type=checkbox],input[type=radio]{width:24px;height:24px;margin:0;flex:none;accent-color:var(--primary)}
 .check{display:flex;align-items:center;gap:.6rem;min-height:44px}
@@ -965,7 +967,7 @@ routes.panel = (main) => {
     if (bad) err.append(alertBox("error", `No se pudieron cargar algunos conteos. ${friendly(bad.reason)}`));
   });
   main.append(h("h2", { text: "Pantallas pendientes en la API" }),
-    h("ul", {}, h("li", {}, h("a", { href: "#/reservas", text: "Reservas" }), ": la API no tiene consulta de administración."),
+    h("ul", { class: "linklist" }, h("li", {}, h("a", { href: "#/reservas", text: "Reservas" }), ": la API no tiene consulta de administración."),
       h("li", {}, h("a", { href: "#/auditoria", text: "Auditoría" }), ": la API no expone la bitácora.")));
   main.append(h("p", { style: "color:var(--muted)", text: "Los conteos muestran activos; \"50+\" significa que hay más de una página." }));
 };
