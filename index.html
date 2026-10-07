@@ -1451,7 +1451,290 @@ function successPanel(plan) {
       h("a", { class: "btn btn-primary", href: `#/lista/departures?flightNumber=${encodeURIComponent(plan.flightNumber)}`, text: "Ver en la lista" }),
       h("button", { class: "btn", type: "button", text: "Crear otro vuelo", onclick: () => { W = newWizardState(); route(); } })));
 }
-/*@@LISTS@@*/
+/* ==========================================================================
+   Listados con búsqueda, paginación por cursor y CRUD (baja lógica)
+   ========================================================================== */
+const STATUS_ES = { SCHEDULED: "Programado", BOARDING: "Embarcando", DEPARTED: "Despegó", DELAYED: "Demorado", ARRIVED: "Aterrizó", CANCELLED: "Cancelado", DIVERTED: "Desviado" };
+const REGEX = {
+  iata3: /^[A-Z]{3}$/, iata2: /^[A-Z0-9]{2}$/, model3: /^[A-Z0-9]{3}$/, pais2: /^[A-Z]{2}$/, flightNo: /^[A-Z0-9]{2}[1-9][0-9]{0,3}$/,
+  pct: /^(100(\.0{1,2})?|\d{1,2}(\.\d{1,2})?)$/, uuid: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+};
+const optsAirports = () => cached("airports", () => loadAll("/admin/airports")).then((l) => optList(l, (a) => a.code, (a) => `${a.code} — ${a.cityName}`));
+const optsAirlines = () => cached("airlines", () => loadAll("/admin/airlines")).then((l) => optList(l, (a) => a.code, (a) => `${a.code} — ${a.name}`));
+const optsModels = () => cached("models", () => loadAll("/admin/aircraft-models")).then((l) => optList(l, (m) => m.code, (m) => `${m.name} (${m.code})`));
+const optsCountries = () => cached("countries", () => loadAll("/admin/countries")).then((l) => optList(l, (c) => c.code, (c) => `${c.code} — ${c.name}`));
+const optsCities = () => cached("cities", () => loadAll("/admin/cities")).then((l) => optList(l, (c) => c.id, (c) => `${c.name} (${c.country})`));
+const optsCabins = () => Promise.resolve(optList(Object.keys(CABIN_ES), (c) => c, (c) => CABIN_ES[c]));
+const optsStatus = () => Promise.resolve(optList(Object.keys(STATUS_ES), (s) => s, (s) => STATUS_ES[s], "Todos"));
+const activeCell = (r) => h("span", { class: "badge" + (r.active ? "" : " off"), text: r.active ? "Activo" : "Inactivo" });
+const rulesFields = () => [
+  { name: "changeable", label: "Permite cambios de fecha", type: "checkbox" },
+  { name: "cancellationPenaltyPercent", label: "Penalización por cancelar (%)", pattern: REGEX.pct, msg: "Un número de 0 a 100 con hasta 2 decimales.", max: 6, inputmode: "decimal", default: "0" },
+  { name: "personalItemIncluded", label: "Incluye artículo personal", type: "checkbox", default: true },
+  { name: "carryOnBagsIncluded", label: "Equipaje de mano incluido (0 a 3)", type: "number", min: 0, maxVal: 3, max: 1, default: "1" },
+  { name: "checkedBagsIncluded", label: "Maletas de bodega incluidas (0 a 5)", type: "number", min: 0, maxVal: 5, max: 1, default: "0" },
+  { name: "maxExtraBags", label: "Máximo de maletas extra (0 a 10)", type: "number", min: 0, maxVal: 10, max: 2, default: "2" },
+];
+
+const ENT = {
+  countries: {
+    title: "Países", one: "país", path: "/admin/countries", id: (r) => r.code,
+    cols: [["Código", (r) => r.code], ["ISO3", (r) => r.iso3], ["Nombre", (r) => r.name], ["Estado", activeCell]],
+    fields: async () => [
+      { name: "code", label: "Código ISO (2 letras)", required: true, max: 2, upper: true, pattern: REGEX.pais2, msg: "Dos letras mayúsculas, ej. EC.", scope: "create" },
+      { name: "iso3", label: "Código ISO3 (3 letras)", required: true, max: 3, upper: true, pattern: REGEX.iata3, msg: "Tres letras mayúsculas, ej. ECU.", scope: "create" },
+      { name: "name", label: "Nombre", required: true, max: 100 },
+    ],
+  },
+  cities: {
+    title: "Ciudades", one: "ciudad", path: "/admin/cities", id: (r) => r.id,
+    cols: [["Nombre", (r) => r.name], ["País", (r) => r.country], ["Zona horaria", (r) => r.timeZone], ["Estado", activeCell]],
+    filters: async () => [{ name: "country", label: "País", type: "select", options: await optsCountries().then((o) => [{ value: "", label: "Todos" }, ...o.slice(1)]) }],
+    fields: async () => [
+      { name: "country", label: "País", type: "select", required: true, options: await optsCountries(), scope: "create" },
+      { name: "name", label: "Nombre", required: true, max: 100 },
+      { name: "timeZone", label: "Zona horaria IANA (opcional)", max: 60, placeholder: "America/Guayaquil", pattern: /^[A-Za-z_]+(\/[A-Za-z0-9_+-]+)+$/, msg: "Usa el formato Continente/Ciudad, ej. America/Guayaquil." },
+    ],
+  },
+  airports: {
+    title: "Aeropuertos", one: "aeropuerto", path: "/admin/airports", id: (r) => r.code,
+    cols: [["Código", (r) => r.code], ["Nombre", (r) => r.name], ["Ciudad", (r) => r.cityName], ["País", (r) => r.country], ["Estado", activeCell]],
+    filters: async () => [{ name: "country", label: "País", type: "select", options: await optsCountries().then((o) => [{ value: "", label: "Todos" }, ...o.slice(1)]) }],
+    fields: async () => [
+      { name: "code", label: "Código IATA (3 letras)", required: true, max: 3, upper: true, pattern: REGEX.iata3, msg: "Tres letras mayúsculas, ej. UIO.", scope: "create" },
+      { name: "name", label: "Nombre", required: true, max: 150 },
+      { name: "cityId", label: "Ciudad", type: "select", required: true, options: await optsCities() },
+    ],
+  },
+  airlines: {
+    title: "Aerolíneas", one: "aerolínea", path: "/admin/airlines", id: (r) => r.code,
+    cols: [["Código", (r) => r.code], ["Nombre", (r) => r.name], ["Prefijo de boleto", (r) => r.ticketPrefix || "—"], ["Estado", activeCell]],
+    fields: async () => [
+      { name: "code", label: "Código IATA (2 caracteres)", required: true, max: 2, upper: true, pattern: REGEX.iata2, msg: "Dos letras o dígitos mayúsculos, ej. AV.", scope: "create" },
+      { name: "name", label: "Nombre", required: true, max: 100 },
+      { name: "ticketPrefix", label: "Prefijo de boleto (3 dígitos, opcional)", max: 3, pattern: /^[0-9]{3}$/, msg: "Tres dígitos, ej. 134.", nullable: true },
+    ],
+  },
+  "aircraft-models": {
+    title: "Equipos (aeronaves)", one: "equipo", path: "/admin/aircraft-models", id: (r) => r.code,
+    cols: [["Código", (r) => r.code], ["Nombre", (r) => r.name], ["Estado", activeCell]],
+    fields: async () => [
+      { name: "code", label: "Código IATA (3 caracteres)", required: true, max: 3, upper: true, pattern: REGEX.model3, msg: "Tres letras o dígitos mayúsculos, ej. 320.", scope: "create" },
+      { name: "name", label: "Nombre", required: true, max: 100 },
+    ],
+  },
+  "fare-families": {
+    title: "Familias tarifarias", one: "familia tarifaria", path: "/admin/fare-families", id: (r) => r.id,
+    cols: [["Aerolínea", (r) => r.airline], ["Cabina", (r) => CABIN_ES[r.cabinClass] || r.cabinClass], ["Código", (r) => r.code], ["Nombre", (r) => r.name],
+      ["Cambios", (r) => (r.changeable ? "Sí" : "No")], ["Penalización", (r) => `${r.cancellationPenaltyPercent}%`], ["Maletas", (r) => String(r.checkedBagsIncluded)], ["Estado", activeCell]],
+    filters: async () => [{ name: "airline", label: "Aerolínea", type: "select", options: (await optsAirlines()).map((o, i) => (i ? o : { value: "", label: "Todas" })) },
+      { name: "cabinClass", label: "Cabina", type: "select", options: (await optsCabins()).map((o, i) => (i ? o : { value: "", label: "Todas" })) }],
+    fields: async () => [
+      { name: "airline", label: "Aerolínea", type: "select", required: true, options: await optsAirlines(), scope: "create" },
+      { name: "cabinClass", label: "Cabina", type: "select", required: true, options: await optsCabins(), scope: "create" },
+      { name: "code", label: "Código (2 a 20: mayúsculas, dígitos o _)", required: true, max: 20, upper: true, pattern: /^[A-Z0-9_]{2,20}$/, msg: "De 2 a 20 mayúsculas, dígitos o guion bajo.", scope: "create" },
+      { name: "name", label: "Nombre", required: true, max: 100 },
+      ...rulesFields(),
+    ],
+  },
+  "seat-maps": {
+    title: "Mapas de asientos", one: "mapa de asientos", path: "/admin/seat-maps", id: (r) => r.id, noCreate: true,
+    note: "El alta de mapas (filas y asientos) todavía no está en este panel: se hace por la API (POST /admin/seat-maps). Aquí puedes renombrar y dar de baja.",
+    cols: [["Nombre", (r) => r.name], ["Aerolínea", (r) => r.airline], ["Equipo", (r) => r.aircraftModel],
+      ["Cabinas", (r) => r.cabins.map((c) => `${CABIN_ES[c.cabinClass] || c.cabinClass} ${c.seats}`).join(" · ")], ["Estado", activeCell]],
+    filters: async () => [{ name: "airline", label: "Aerolínea", type: "select", options: (await optsAirlines()).map((o, i) => (i ? o : { value: "", label: "Todas" })) },
+      { name: "aircraftModel", label: "Equipo", type: "select", options: (await optsModels()).map((o, i) => (i ? o : { value: "", label: "Todos" })) }],
+    fields: async () => [{ name: "name", label: "Nombre", required: true, max: 150 }],
+  },
+  flights: {
+    title: "Rutas y números de vuelo", one: "vuelo", path: "/admin/flights", id: (r) => r.flightNumber,
+    cols: [["Vuelo", (r) => r.flightNumber], ["Comercializa", (r) => r.marketingCarrier], ["Opera", (r) => r.operatingCarrier], ["Origen", (r) => r.origin], ["Destino", (r) => r.destination], ["Estado", activeCell]],
+    filters: async () => {
+      const ap = (await optsAirports()).map((o, i) => (i ? o : { value: "", label: "Todos" }));
+      return [{ name: "airline", label: "Aerolínea", type: "select", options: (await optsAirlines()).map((o, i) => (i ? o : { value: "", label: "Todas" })) },
+        { name: "origin", label: "Origen", type: "select", options: ap }, { name: "destination", label: "Destino", type: "select", options: ap }];
+    },
+    fields: async () => {
+      const air = await optsAirlines(), ap = await optsAirports();
+      return [
+        { name: "marketingCarrier", label: "Aerolínea que lo comercializa", type: "select", required: true, options: air, scope: "create" },
+        { name: "number", label: "Número (1 a 4 dígitos)", type: "number", required: true, max: 4, pattern: /^[1-9][0-9]{0,3}$/, msg: "De 1 a 4 dígitos, sin ceros a la izquierda.", scope: "create" },
+        { name: "origin", label: "Origen", type: "select", required: true, options: ap, scope: "create" },
+        { name: "destination", label: "Destino", type: "select", required: true, options: ap, scope: "create", custom: (v, all) => (v === all.origin ? "El destino debe ser distinto del origen." : "") },
+        { name: "operatingCarrier", label: "Aerolínea que lo opera (opcional)", type: "select", options: [{ value: "", label: "La misma que lo comercializa" }, ...air.slice(1)] },
+      ];
+    },
+  },
+  departures: {
+    title: "Vuelos (salidas programadas)", one: "salida", path: "/admin/departures", id: (r) => r.id, wizard: true, deleteLabel: "Cancelar salida",
+    cols: [["Vuelo", (r) => r.flightNumber], ["Ruta", (r) => `${r.origin} → ${r.destination}`], ["Salida (Ecuador)", (r) => fmtEC(r.scheduledDeparture)], ["Llegada (Ecuador)", (r) => fmtEC(r.scheduledArrival)],
+      ["Cabinas", (r) => r.cabins.map((c) => `${CABIN_ES[c.cabinClass] || c.cabinClass} ${c.availableSeats}/${c.totalSeats}`).join(" · ")],
+      ["Estado", (r) => h("span", { class: "badge" + (r.active ? "" : " off"), text: STATUS_ES[r.status] || r.status })]],
+    filters: async () => [
+      { name: "flightNumber", label: "Número de vuelo", upper: true, max: 6, pattern: REGEX.flightNo, msg: "Ej. AV1500." },
+      { name: "dateFrom", label: "Desde (fecha de salida)", type: "date" }, { name: "dateTo", label: "Hasta", type: "date" },
+      { name: "status", label: "Estado", type: "select", options: await optsStatus() }],
+    fields: async () => [
+      { name: "scheduledDeparture", label: "Salida (hora de Ecuador)", type: "datetime", required: true },
+      { name: "scheduledArrival", label: "Llegada (hora de Ecuador)", type: "datetime", required: true, custom: (v, all) => (all.scheduledDeparture && v <= all.scheduledDeparture ? "La llegada debe ser posterior a la salida." : "") },
+      { name: "departureTerminal", label: "Terminal de salida", max: 10, nullable: true },
+      { name: "arrivalTerminal", label: "Terminal de llegada", max: 10, nullable: true },
+      { name: "status", label: "Estado", type: "select", required: true, options: Object.keys(STATUS_ES).filter((s) => s !== "CANCELLED").map((s) => ({ value: s, label: STATUS_ES[s] })),
+        hint: "Para cancelar la salida usa el botón \"Cancelar salida\"." },
+    ],
+    editOnly: true,
+  },
+  fares: {
+    title: "Tarifas", one: "tarifa", path: "/admin/fares", id: (r) => r.id, noCreate: true,
+    note: "Las tarifas se crean junto con el vuelo en el asistente \"Crear vuelo\". Aquí puedes ajustar maleta extra y cargo por cambio, y dar de baja.",
+    cols: [["Vuelo", (r) => r.flightNumber], ["Familia", (r) => r.fareBrand], ["Cabina", (r) => CABIN_ES[r.cabinClass] || r.cabinClass], ["Moneda", (r) => r.currency],
+      ["Total adulto", (r) => { const a = r.prices.find((p) => p.passengerType === "ADULT"); return a ? a.total : "—"; }], ["Maleta extra", (r) => r.extraBagPrice], ["Cambio", (r) => r.changeFee], ["Estado", activeCell]],
+    filters: async () => [],
+    fields: async () => [
+      { name: "extraBagPrice", label: "Precio de maleta extra", required: true, pattern: MONEY_RE, msg: MONEY_MSG, max: 13, inputmode: "decimal" },
+      { name: "changeFee", label: "Cargo por cambio", pattern: MONEY_RE, msg: MONEY_MSG, max: 13, inputmode: "decimal" },
+    ],
+  },
+};
+
+/** Valor inicial de un campo del formulario a partir del registro. */
+function initialFor(s, row) {
+  if (!row) return s.default;
+  const v = row[s.name];
+  if (s.type === "datetime") return utcIsoToEcInput(v);
+  if (s.type === "checkbox") return !!v;
+  return v == null ? "" : String(v);
+}
+/** Cuerpo de la petición: al crear, todo lo escrito; al editar, solo lo que cambió (PATCH parcial). */
+function bodyFrom(specs, vals, row) {
+  const body = {};
+  for (const s of specs) {
+    let v = vals[s.name];
+    if (row) {
+      if (s.scope === "create") continue;
+      if (String(initialFor(s, row)) === String(v)) continue;
+    } else if (s.scope === "edit") continue;
+    if (s.type === "checkbox") v = !!v;
+    else if (v === "" || v == null) { if (row && s.nullable) v = null; else if (row && s.type === "select" && s.name === "operatingCarrier") continue; else continue; }
+    else if (s.type === "number") v = Number(v);
+    else if (s.type === "datetime") v = ecInputToUtcIso(v);
+    body[s.name] = v;
+  }
+  return body;
+}
+
+routes.lista = (main, entId, params) => {
+  const cfg = ENT[entId];
+  if (!cfg) { main.append(pageHead("No encontrado"), alertBox("error", "Esa pantalla no existe.")); return; }
+  const L = { cursors: [undefined], page: 0, items: [], next: null, filters: {}, inactive: false, limit: 10, q: "" };
+  if (params.flightNumber) L.filters.flightNumber = params.flightNumber;
+  const createBtn = cfg.wizard
+    ? h("a", { class: "btn btn-primary", href: "#/crear-vuelo", text: "Crear vuelo" })
+    : cfg.noCreate ? null : h("button", { class: "btn btn-primary", type: "button", text: `Nuevo ${cfg.one}`, onclick: () => openForm(null) });
+  main.append(pageHead(cfg.title, cfg.note || "Búsqueda, paginación y administración. Eliminar es siempre una baja lógica.", createBtn));
+  const msg = h("div", { role: "status", "aria-live": "polite" });
+  const tableBox = h("div");
+  const pager = h("div", { class: "pager" });
+  const toolbar = h("form", { class: "toolbar", role: "search", "aria-label": `Buscar en ${cfg.title}`, novalidate: true });
+  main.append(msg, toolbar, tableBox, pager);
+
+  const search = mkField({ name: "q", label: "Buscar en esta página", placeholder: "Texto a buscar…", max: 60 }, "");
+  search.input.setAttribute("type", "search");
+  search.input.addEventListener("input", () => { L.q = search.get().toLowerCase(); draw(); });
+  const inact = h("input", { type: "checkbox", id: "f-inact" });
+  const limitSel = mkField({ name: "limit", label: "Filas por página", type: "select", options: [10, 25, 50].map((n) => ({ value: String(n), label: String(n) })) }, "10");
+  let filterFields = [];
+
+  const load = async () => {
+    clear(msg);
+    clear(tableBox).append(h("p", { text: "Cargando…" }));
+    try {
+      const q = { limit: L.limit, cursor: L.cursors[L.page], includeInactive: L.inactive ? "true" : undefined, ...L.filters };
+      const page = await api("GET", cfg.path, { query: q });
+      L.items = page.items; L.next = page.nextCursor || null;
+      draw();
+    } catch (e) { clear(tableBox); msg.append(alertBox("error", friendly(e))); clear(pager); }
+  };
+  const reload = (reset) => { if (reset) { L.cursors = [undefined]; L.page = 0; } return load(); };
+
+  const draw = () => {
+    clear(tableBox);
+    const shown = L.items.filter((r) => !L.q || JSON.stringify(Object.values(r)).toLowerCase().includes(L.q) || cfg.cols.some(([, v]) => { const x = v(r); return typeof x === "string" && x.toLowerCase().includes(L.q); }));
+    if (!shown.length) tableBox.append(h("p", { class: "card", text: L.items.length ? "Ninguna fila de esta página coincide con la búsqueda." : "No hay registros con estos filtros." }));
+    else {
+      const head = h("tr", {}, cfg.cols.map(([t]) => h("th", { scope: "col", text: t })), h("th", { scope: "col", text: "Acciones" }));
+      const body = shown.map((r) => {
+        const label = cfg.id(r);
+        const acts = h("div", { class: "actions" },
+          h("button", { class: "btn btn-sm", type: "button", text: "Editar", "aria-label": `Editar ${cfg.one} ${label}`, onclick: () => openForm(r) }),
+          r.active
+            ? h("button", { class: "btn btn-sm btn-danger", type: "button", text: cfg.deleteLabel || "Dar de baja", "aria-label": `${cfg.deleteLabel || "Dar de baja"} ${cfg.one} ${label}`, onclick: () => deactivate(r) })
+            : h("button", { class: "btn btn-sm", type: "button", text: "Reactivar", "aria-label": `Reactivar ${cfg.one} ${label}`, onclick: () => reactivate(r) }));
+        return h("tr", { class: r.active ? "" : "inactive" }, cfg.cols.map(([, v]) => h("td", {}, v(r))), h("td", {}, acts));
+      });
+      tableBox.append(h("div", { class: "table-wrap", tabindex: "0", role: "region", "aria-label": `Tabla de ${cfg.title}` },
+        h("table", {}, h("caption", { text: `${shown.length} de ${L.items.length} fila(s) en esta página · página ${L.page + 1}` }), h("thead", {}, head), h("tbody", {}, body))));
+    }
+    clear(pager).append(
+      h("div", { class: "actions" },
+        h("button", { class: "btn", type: "button", text: "← Anterior", disabled: L.page === 0, onclick: () => { L.page--; load(); } }),
+        h("button", { class: "btn", type: "button", text: "Siguiente →", disabled: !L.next, onclick: () => { L.cursors[L.page + 1] = L.next; L.page++; load(); } })),
+      h("span", { style: "color:var(--muted)", text: `Página ${L.page + 1}${L.next ? "" : " (última)"}` }));
+  };
+
+  const deactivate = async (r) => {
+    const ok = await confirmDialog(`${cfg.deleteLabel || "Dar de baja"}: ${cfg.id(r)}`,
+      "Es una baja lógica: el registro queda inactivo, no se borra, y se puede reactivar después. Si otros registros activos lo usan, la API no lo permitirá.", cfg.deleteLabel || "Dar de baja");
+    if (!ok) return;
+    try { await api("DELETE", `${cfg.path}/${encodeURIComponent(cfg.id(r))}`); invalidateCache(); toast("Listo: registro dado de baja."); await reload(false); }
+    catch (e) { clear(msg).append(alertBox("error", friendly(e))); msg.scrollIntoView({ block: "nearest" }); }
+  };
+  const reactivate = async (r) => {
+    try { await api("POST", `${cfg.path}/${encodeURIComponent(cfg.id(r))}/reactivate`); invalidateCache(); toast("Listo: registro reactivado."); await reload(false); }
+    catch (e) { clear(msg).append(alertBox("error", friendly(e))); msg.scrollIntoView({ block: "nearest" }); }
+  };
+  const openForm = async (row) => {
+    let specs;
+    try { specs = await cfg.fields(); } catch (e) { clear(msg).append(alertBox("error", friendly(e))); return; }
+    specs = specs.filter((s) => (row ? s.scope !== "create" : s.scope !== "edit"));
+    const values = {};
+    for (const s of specs) values[s.name] = initialFor(s, row);
+    let close;
+    const form = mkForm(specs, values, {
+      submitLabel: row ? "Guardar cambios" : "Crear",
+      onCancel: () => close(),
+      onSubmit: async (vals) => {
+        const body = bodyFrom(specs, vals, row);
+        if (row && !Object.keys(body).length) { close(); toast("No hay cambios que guardar."); return; }
+        if (row) await api("PATCH", `${cfg.path}/${encodeURIComponent(cfg.id(row))}`, { body });
+        else await api("POST", cfg.path, { body });
+        invalidateCache(); close(); toast(row ? "Cambios guardados." : "Registro creado."); await reload(!row);
+      },
+    });
+    close = openDialog(row ? `Editar ${cfg.one} ${cfg.id(row)}` : `Nuevo ${cfg.one}`, form.el);
+    const first = form.el.querySelector("input,select"); if (first) first.focus();
+  };
+
+  // Barra de herramientas: filtros del servidor + búsqueda local + inactivos + tamaño de página
+  (async () => {
+    try { filterFields = cfg.filters ? (await cfg.filters()).map((s) => mkField(s, L.filters[s.name] || "")) : []; } catch (e) { msg.append(alertBox("error", friendly(e))); }
+    const apply = h("button", { class: "btn btn-primary", type: "submit", text: "Aplicar filtros" });
+    toolbar.append(search.el, ...filterFields.map((f) => f.el), limitSel.el,
+      h("div", { class: "field" }, h("div", { class: "check" }, inact, h("label", { for: "f-inact", text: "Mostrar inactivos" }))), h("div", { class: "field" }, apply));
+    toolbar.addEventListener("submit", (ev) => {
+      ev.preventDefault();
+      if (!validateFields(filterFields)) return;
+      L.filters = {};
+      for (const f of filterFields) if (f.get()) L.filters[f.spec.name] = f.get();
+      L.inactive = inact.checked; L.limit = Number(limitSel.get());
+      reload(true);
+    });
+    inact.addEventListener("change", () => toolbar.requestSubmit());
+    limitSel.input.addEventListener("change", () => toolbar.requestSubmit());
+    filterFields.forEach((f) => f.input.tagName === "SELECT" && f.input.addEventListener("change", () => toolbar.requestSubmit()));
+  })();
+  load();
+};
 
 /* ---------- Arranque ---------- */
 (async function start() {
