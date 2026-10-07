@@ -470,7 +470,7 @@ function mkForm(specs, values, { onSubmit, submitLabel = "Guardar", onCancel, co
     catch (e) {
       const names = (e instanceof ApiError ? e.invalidParams : []).map((p) => String(p.name).split(/[.\[]/)[0]);
       for (const n of names) if (fields[n]) fields[n].showError("Revisa este campo.");
-      showFormErr(friendly(e));
+      showFormErr(e && e._msg ? e._msg : friendly(e));
       formErr.scrollIntoView?.({ block: "nearest" });
     } finally { submit.disabled = false; submit.textContent = old; }
   });
@@ -819,7 +819,7 @@ const NAV = [
     { id: "lista/countries", label: "Países", hash: "#/lista/countries" },
   ] },
   { group: "Control", items: [
-    { id: "usuarios", label: "Administradores", hash: "#/usuarios", tag: "Pendiente" },
+    { id: "usuarios", label: "Administradores", hash: "#/usuarios" },
     { id: "auditoria", label: "Auditoría", hash: "#/auditoria", tag: "Pendiente" },
   ] },
 ];
@@ -995,13 +995,13 @@ routes.auditoria = (main) => {
 
 
 /* ---------- Administradores: crear un usuario administrador ---------- */
+function usersMsg(e, list) {
+  if (e instanceof ApiError && (e.status === 404 || e.status === 405)) return `La API desplegada no tiene todavía el endpoint /admin/users para ${list ? "listar" : "crear"} administradores. Hay que agregarlo en el backend.`;
+  if (e instanceof ApiError && e.status === 409) return "Ya existe un usuario con ese correo.";
+  return friendly(e);
+}
 routes.usuarios = (main) => {
   main.append(pageHead("Administradores", "Crea cuentas de administrador (acceso completo al backoffice)."));
-  if (!session.demo) {
-    main.append(pendingBox("La API no tiene un endpoint para crear administradores: POST /auth/register es público y solo crea cuentas de cliente, y no existe una ruta para asignar el rol de administrador. Endpoint que hace falta (propuesto): POST /admin/users con { email, password } que cree el usuario con el rol administrador, solo con scope flights:admin (409 si el correo ya existe). Mientras tanto la pantalla funciona únicamente en modo demo."));
-    return;
-  }
-  main.append(alertBox("info", "Modo demo: el usuario se crea solo en esta pestaña; la API real todavía no ofrece esta operación."));
   const listBox = h("div");
   const loadList = async () => {
     try {
@@ -1009,7 +1009,7 @@ routes.usuarios = (main) => {
       clear(listBox).append(h("div", { class: "table-wrap" }, h("table", {}, h("caption", { text: `${items.length} administrador(es)` }),
         h("thead", {}, h("tr", {}, ["Correo", "Rol", "Creado (Ecuador)"].map((t) => h("th", { scope: "col", text: t })))),
         h("tbody", {}, items.map((u) => h("tr", {}, h("td", { text: u.email }), h("td", { text: "Administrador" }), h("td", { text: fmtEC(u.createdAt) })))))));
-    } catch (e) { clear(listBox).append(alertBox("error", friendly(e))); }
+    } catch (e) { clear(listBox).append(alertBox(e instanceof ApiError && (e.status === 404 || e.status === 405) ? "warn" : "error", usersMsg(e, true))); }
   };
   const ok = h("div", { role: "status", "aria-live": "polite" });
   const form = mkForm([
@@ -1022,7 +1022,9 @@ routes.usuarios = (main) => {
   ], {}, {
     submitLabel: "Crear administrador",
     onSubmit: async (v, f) => {
-      const u = await api("POST", "/admin/users", { body: { email: v.email, password: v.password } });
+      let u;
+      try { u = await api("POST", "/admin/users", { body: { email: v.email, password: v.password } }); }
+      catch (e) { if (e instanceof ApiError && [404, 405, 409].includes(e.status)) throw Object.assign(new Error(), { _msg: usersMsg(e) }); throw e; }
       clear(ok).append(alertBox("ok", `Administrador ${u.email} creado.`));
       for (const k of Object.keys(f)) { f[k].set(""); f[k].showError(""); }
       await loadList();
