@@ -1,6 +1,6 @@
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
-import { forwardRef, type ComponentPropsWithoutRef, type ElementRef, type ReactNode } from 'react';
+import { forwardRef, useRef, type ComponentPropsWithoutRef, type ElementRef, type ReactNode } from 'react';
 import { es } from '@/shared/i18n';
 import { cn } from '@/shared/lib/cn';
 import { Alert } from './alert';
@@ -17,11 +17,28 @@ const DialogClose = DialogPrimitive.Close;
 export const DialogContent = forwardRef<
   ElementRef<typeof DialogPrimitive.Content>,
   ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & { hideClose?: boolean }
->(({ className, children, hideClose = false, ...props }, ref) => (
+>(({ className, children, hideClose = false, onOpenAutoFocus, onCloseAutoFocus, ...props }, ref) => {
+  // Quién tenía el foco al abrir (los diálogos se abren con estado, sin <DialogTrigger>): a él vuelve el foco al cerrar.
+  const openerRef = useRef<HTMLElement | null>(null);
+  return (
   <DialogPrimitive.Portal>
     <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-overlay/60 animate-fade-in" />
     <DialogPrimitive.Content
       ref={ref}
+      onOpenAutoFocus={(event) => {
+        // Se dispara al abrir, antes de mover el foco al diálogo: es el momento de recordar quién lo tenía.
+        const active = document.activeElement;
+        openerRef.current = active instanceof HTMLElement && active !== document.body ? active : null;
+        onOpenAutoFocus?.(event);
+      }}
+      onCloseAutoFocus={(event) => {
+        onCloseAutoFocus?.(event);
+        const opener = openerRef.current;
+        if (!event.defaultPrevented && opener?.isConnected) {
+          event.preventDefault();
+          opener.focus();
+        }
+      }}
       className={cn(
         'fixed left-1/2 top-1/2 z-50 flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-prose -translate-x-1/2 -translate-y-1/2 flex-col gap-4 overflow-y-auto',
         'rounded border-2 border-border bg-surface p-6 shadow-raised animate-slide-up',
@@ -39,7 +56,8 @@ export const DialogContent = forwardRef<
       )}
     </DialogPrimitive.Content>
   </DialogPrimitive.Portal>
-));
+  );
+});
 DialogContent.displayName = 'DialogContent';
 
 export function DialogTitle({ className, ...props }: ComponentPropsWithoutRef<typeof DialogPrimitive.Title>) {

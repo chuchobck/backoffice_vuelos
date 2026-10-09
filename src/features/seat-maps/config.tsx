@@ -55,7 +55,7 @@ export const seatMapsConfig: ResourceConfig<'seatMaps', SeatMapValues> = {
       {
         label: t.detail.rows,
         value: (
-          <div role="region" aria-label={t.detail.rows} tabIndex={0} className="max-h-60 overflow-y-auto">
+          <div role="region" aria-label={t.detail.rows} tabIndex={0} className="relative max-h-60 overflow-y-auto">
             <ul className="font-mono text-sm">
               {rowLines(m).map((line) => (
                 <li key={line}>{line}</li>

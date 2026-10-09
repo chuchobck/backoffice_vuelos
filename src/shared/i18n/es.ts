@@ -724,7 +724,7 @@ export const es = {
     createFlight: 'Crear un vuelo',
     loadingCounts: 'Contando registros…',
     countError: 'No se pudo contar.',
-    countAria: '{label}: {count} activos',
+    active: 'activos',
     capShort: 'Se contó hasta el tope de {cap}.',
     pendingTitle: 'Pantallas pendientes en la API',
     pendingText: 'Estas pantallas esperan endpoints de administración que el backend todavía no tiene.',

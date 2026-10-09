@@ -11,13 +11,25 @@ export function CountCard({ resource, label, to }: { resource: ResourceName; lab
   const query = useAllItems(resource);
   const data = query.data;
   const value = data ? `${data.items.length}${data.truncated ? '+' : ''}` : null;
-  const spoken = data ? fmt(es.dashboard.countAria, { label, count: value ?? '' }) : label;
   return (
     <li className="flex">
       <div className="flex w-full flex-col justify-between gap-2 rounded border-2 border-border bg-surface p-4 shadow-card">
-        <Link to={to} aria-label={spoken} className="flex flex-col gap-1 no-underline hover:underline">
-          {query.isLoading ? <Skeleton className="h-10 w-24" /> : <span className="text-3xl font-bold text-primary tabular-nums">{value ?? es.common.dash}</span>}
-          <span className="font-bold text-foreground">{label}</span>
+        {/* El nombre accesible sale del contenido (sin aria-label): "Vuelos (salidas) 30 activos". El orden visual (número arriba) lo da flex-col-reverse. */}
+        <Link to={to} className="flex flex-col-reverse gap-1 no-underline hover:underline">
+          <span className="font-bold text-foreground">{label}</span>{' '}
+          {query.isLoading ? (
+            <Skeleton className="h-10 w-24" />
+          ) : (
+            <span className="text-3xl font-bold text-primary tabular-nums">
+              {value ?? es.common.dash}
+              {value ? (
+                <>
+                  {' '}
+                  <span className="sr-only">{es.dashboard.active}</span>
+                </>
+              ) : null}
+            </span>
+          )}
         </Link>
         {query.error ? (
           <div role="alert" className="flex flex-wrap items-center gap-2 text-sm text-error">

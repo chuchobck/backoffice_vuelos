@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { LogIn } from 'lucide-react';
-import { useRef, useState, type FormEvent } from 'react';
+import { useRef, useState, type FocusEvent, type FormEvent } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { apiConfig, loginErrorMessage, setApiMode, useIsDemo, warmUpServer } from '@/shared/api';
 import { es } from '@/shared/i18n';
@@ -38,7 +38,10 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
   // Evita el doble envío (también con Enter): el candado se toma antes de la validación asíncrona.
   // Despierta el servidor gratuito de Render al empezar a escribir, solo en modo real (la demo nunca hace red).
   const warmed = useRef(false);
-  const onFocus = () => {
+  const onFocus = (event: FocusEvent<HTMLFormElement>) => {
+    // Solo al entrar en el correo o la contraseña: marcar "Modo demo" primero nunca toca la red.
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement) || target.type === 'checkbox') return;
     if (warmed.current || getValues('demo')) return;
     warmed.current = true;
     warmUpServer();

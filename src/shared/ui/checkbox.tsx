@@ -31,7 +31,7 @@ export const Checkbox = forwardRef<ElementRef<typeof CheckboxPrimitive.Root>, Ch
             aria-describedby={describedBy}
             aria-invalid={error ? true : undefined}
             className={cn(
-              'mt-2 inline-flex size-6 shrink-0 items-center justify-center rounded-sm border-2 border-input bg-surface',
+              'mt-3 inline-flex size-6 shrink-0 items-center justify-center rounded-sm border-2 border-input bg-surface',
               'hover:border-foreground data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground',
               'disabled:cursor-not-allowed disabled:opacity-60 aria-[invalid=true]:border-error',
             )}
@@ -41,8 +41,8 @@ export const Checkbox = forwardRef<ElementRef<typeof CheckboxPrimitive.Root>, Ch
               <Check aria-hidden="true" strokeWidth={3} className="size-4" />
             </CheckboxPrimitive.Indicator>
           </CheckboxPrimitive.Root>
-          <div className="flex flex-col py-2">
-            <label htmlFor={controlId} className="cursor-pointer font-bold">
+          <div className="flex flex-col">
+            <label htmlFor={controlId} className="flex min-h-11 cursor-pointer items-center font-bold">
               {label}
             </label>
             {hint ? (

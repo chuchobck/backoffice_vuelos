@@ -108,7 +108,8 @@ export default tseslint.config(
     // Guiones de extremo a extremo (Playwright): corren en Node.
     files: ['e2e/**/*.mjs'],
     extends: [js.configs.recommended],
-    languageOptions: { globals: globals.node },
+    // Node para el guion y navegador para el código que corre dentro de page.evaluate().
+    languageOptions: { globals: { ...globals.node, ...globals.browser } },
   },
   {
     files: ['*.config.{js,ts}'],

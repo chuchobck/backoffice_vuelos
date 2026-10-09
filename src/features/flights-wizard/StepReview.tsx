@@ -78,7 +78,7 @@ export function StepReview({ state, onBack, onDone }: StepProps & { onDone: (res
       </dl>
 
       <h3 id={FARES_ID} className="text-lg">{t.faresTitle}</h3>
-      <div role="region" aria-labelledby={FARES_ID} tabIndex={0} className="overflow-x-auto rounded border-2 border-border">
+      <div role="region" aria-labelledby={FARES_ID} tabIndex={0} className="relative overflow-x-auto rounded border-2 border-border">
         <table className="w-full min-w-[32rem] border-collapse text-left text-sm">
           <caption className="sr-only">{fmt(t.faresCaption, { count: plan.fares.length * plan.departures.length })}</caption>
           <thead>

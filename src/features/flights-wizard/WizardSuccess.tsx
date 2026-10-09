@@ -20,7 +20,7 @@ export function WizardSuccess({ flightNumber, result, onAnother }: { flightNumbe
         {fmt(t.title, { flight: flightNumber })}
       </h2>
       <p>{fmt(t.text, { count: result.departures.length })}</p>
-      <div role="region" aria-label={t.idsCaption} tabIndex={0} className="overflow-x-auto rounded border-2 border-border bg-surface">
+      <div role="region" aria-label={t.idsCaption} tabIndex={0} className="relative overflow-x-auto rounded border-2 border-border bg-surface">
         <table className="w-full min-w-[28rem] border-collapse text-left text-sm">
           <caption className="sr-only">{t.idsCaption}</caption>
           <thead>

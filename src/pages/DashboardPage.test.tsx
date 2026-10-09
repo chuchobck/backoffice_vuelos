@@ -19,9 +19,9 @@ describe('Panel inicial (modo demo)', () => {
     );
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
     // Los datos de ejemplo tienen 30 salidas y 39 tarifas: más que una página de 10, y no hay "50+" porque no pasan el tope.
-    await waitFor(() => expect(screen.getByRole('link', { name: 'Vuelos (salidas): 30 activos' })).toBeTruthy());
-    expect(screen.getByRole('link', { name: 'Tarifas: 39 activos' })).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'Aeropuertos: 10 activos' })).toBeTruthy();
+    await waitFor(() => expect(screen.getByRole('link', { name: 'Vuelos (salidas) 30 activos' })).toBeTruthy());
+    expect(screen.getByRole('link', { name: 'Tarifas 39 activos' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Aeropuertos 10 activos' })).toBeTruthy();
     // Ninguna tarjeta muestra "N+": ninguna pasa el tope.
     for (const link of screen.getAllByRole('link', { name: /activos$/ })) expect(link.textContent).not.toMatch(/\+/);
   });

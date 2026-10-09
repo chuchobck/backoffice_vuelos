@@ -25,7 +25,7 @@ export function PendingScreen({ kind }: { kind: PendingKind }) {
       </Card>
       <Card className="flex flex-col gap-3">
         <CardTitle as="h2">{p.specTitle}</CardTitle>
-        <div className="overflow-x-auto" tabIndex={0} role="region" aria-label={p.specTitle}>
+        <div className="relative overflow-x-auto" tabIndex={0} role="region" aria-label={p.specTitle}>
           <table className="w-full min-w-[32rem] border-collapse text-left text-sm">
             <thead>
               <tr className="bg-primary-tint text-foreground">

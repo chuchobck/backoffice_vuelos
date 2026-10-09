@@ -1,0 +1,31 @@
+# Blueprint OPCIONAL de Render para el backoffice (Static Site). También se puede configurar a mano en el panel:
+# ver "Despliegue" en el README. La URL de la API NO va aquí: se edita en public/config.js (dist/config.js en el sitio).
+services:
+  - type: web
+    name: backoffice-vuelos
+    runtime: static
+    branch: main
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+    routes:
+      # React Router: cualquier ruta (/aeropuertos, /vuelos/crear…) debe servir index.html.
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    headers:
+      # La URL de la API se lee de este archivo en cada carga: nunca debe quedar en caché.
+      - path: /config.js
+        name: Cache-Control
+        value: no-cache
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
+      - path: /*
+        name: X-Frame-Options
+        value: DENY

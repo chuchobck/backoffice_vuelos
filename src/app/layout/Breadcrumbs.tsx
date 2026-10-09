@@ -21,7 +21,7 @@ export function Breadcrumbs() {
           <li key={`${c.label}-${i}`} className="flex items-center gap-1">
             {i > 0 ? <ChevronRight aria-hidden="true" className="size-4" /> : null}
             {'to' in c && c.to ? (
-              <Link to={c.to}>{c.label}</Link>
+              <Link to={c.to} className="-mx-2 inline-flex min-h-11 items-center px-2">{c.label}</Link>
             ) : (
               <span aria-current={'current' in c && c.current ? 'page' : undefined} className={'current' in c && c.current ? 'font-bold text-foreground' : undefined}>
                 {c.label}

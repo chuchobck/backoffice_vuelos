@@ -17,7 +17,7 @@ export function ResourcePager({ page, hasNext, totalPages, onPrevious, onNext }:
   const label = totalPages ? fmt(es.table.pageOfTotal, { page: page + 1, total: totalPages }) : hasNext ? fmt(es.table.page, { page: page + 1 }) : fmt(es.table.pageLast, { page: page + 1 });
   return (
     <nav aria-label={es.a11y.pagination} className="flex flex-wrap items-center justify-between gap-2">
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <Button variant="secondary" disabled={page === 0} onClick={onPrevious}>
           <ChevronLeft aria-hidden="true" />
           {es.table.previous}

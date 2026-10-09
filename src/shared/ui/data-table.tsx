@@ -60,7 +60,7 @@ export function sortRows<T>(rows: T[], columns: Column<T>[], sort: SortState | n
 export function DataTable<T>({ columns, rows, getRowId, caption, sort, onSort, loading = false, skeletonRows = 5, isRowMuted, actions }: DataTableProps<T>) {
   const colCount = columns.length + (actions ? 1 : 0);
   return (
-    <div role="region" aria-label={fmt(es.a11y.tableRegion, { name: caption })} tabIndex={0} className="max-w-full overflow-x-auto rounded border-2 border-border bg-surface">
+    <div role="region" aria-label={fmt(es.a11y.tableRegion, { name: caption })} tabIndex={0} className="relative max-w-full overflow-x-auto rounded border-2 border-border bg-surface">
       <table className="w-full min-w-[40rem] border-collapse text-left text-sm">
         <caption className="sr-only">{caption}</caption>
         <thead>
