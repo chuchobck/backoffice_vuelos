@@ -15,3 +15,4 @@ export { EmptyState, ErrorState, LoadingState, RetryButton } from './states';
 export { Toaster, toast } from './toast';
 export { DataTable, nextSort, sortRows, type Column, type SortState } from './data-table';
 export { ActiveBadge } from './active-badge';
+export { ZonedTime } from './zoned-time';

@@ -9,7 +9,7 @@ export function App() {
     <ThemeProvider>
       <QueryProvider>
         <AuthProvider manager={session}>
-          <RouterProvider router={router} />
+          <RouterProvider router={router} future={{ v7_startTransition: true }} />
         </AuthProvider>
       </QueryProvider>
     </ThemeProvider>

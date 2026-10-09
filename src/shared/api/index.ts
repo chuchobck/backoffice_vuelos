@@ -10,3 +10,4 @@ export { createDemoAdminApi } from './demo/DemoAdminApi';
 export { createRealAdminApi } from './RealAdminApi';
 export { adminApi, warmUpServer } from './instance';
 export * from './queries';
+export { useAirportZones } from './zones';

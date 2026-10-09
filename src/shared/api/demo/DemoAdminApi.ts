@@ -69,7 +69,9 @@ export function createDemoAdminApi(options: DemoOptions = {}): AdminApi {
   const wait = () => (latency > 0 ? new Promise<void>((r) => setTimeout(r, latency)) : Promise.resolve());
   const s: DemoState = buildSeed(now());
   let email = 'admin@demo.local';
-  let tokenN = 0;
+  // Tokens únicos como los reales: el SessionManager recuerda los ya rotados y no debe confundirlos tras recargar.
+  const random = () => (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`);
+  const issueTokens = () => ({ accessToken: `demo.access.${random()}`, refreshToken: `demo-refresh-${random()}`, expiresIn: 900, scope: 'flights:admin' });
 
   const asAirport = (r: AirportRow): Airport => {
     const c = s.cities.find((x) => x.id === r.cityId);
@@ -361,14 +363,12 @@ export function createDemoAdminApi(options: DemoOptions = {}): AdminApi {
     async login(c) {
       await wait();
       email = c.email;
-      tokenN += 1;
-      return { accessToken: `demo.access.${tokenN}`, refreshToken: `demo-refresh-${tokenN}`, expiresIn: 900, scope: 'flights:admin' };
+      return issueTokens();
     },
     async refresh(rt) {
       await wait();
       if (!rt.startsWith('demo-refresh-')) throw new ApiError({ status: 401, code: 'VALIDATION_FAILED' });
-      tokenN += 1;
-      return { accessToken: `demo.access.${tokenN}`, refreshToken: `demo-refresh-${tokenN}`, expiresIn: 900, scope: 'flights:admin' };
+      return issueTokens();
     },
     async logout() {
       await wait();

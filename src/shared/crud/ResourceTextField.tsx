@@ -22,6 +22,7 @@ export function ResourceTextField({
     <Field id={id} label={spec.label} hint={spec.hint} error={error?.message} required={required}>
       <Input
         {...register(spec.name)}
+        type={spec.inputType ?? 'text'}
         inputMode={spec.inputMode}
         maxLength={spec.maxLength}
         placeholder={spec.placeholder}

@@ -128,10 +128,10 @@ export function ResourceScreen<N extends ResourceName, V extends FieldValues = F
               {config.createLink.label}
             </Link>
           </Button>
-        ) : config.form ? (
+        ) : config.createDialog || (config.form && !config.noCreate) ? (
           <Button onClick={() => setForm({ open: true })}>
             <Plus aria-hidden="true" />
-            {fmt(es.crud.newItem, { noun: config.noun })}
+            {fmt(config.feminine ? es.crud.newItemF : es.crud.newItem, { noun: config.noun })}
           </Button>
         ) : null}
       </div>
@@ -204,7 +204,7 @@ export function ResourceScreen<N extends ResourceName, V extends FieldValues = F
                       {es.crud.view}
                     </Button>
                   ) : null}
-                  {config.form ? (
+                  {config.form || config.editDialog ? (
                     <Button size="sm" variant="secondary" aria-label={fmt(es.crud.editAria, names)} onClick={() => setForm({ open: true, item })}>
                       <Pencil aria-hidden="true" />
                       {es.common.edit}
@@ -244,7 +244,15 @@ export function ResourceScreen<N extends ResourceName, V extends FieldValues = F
       )}
       {config.note ? <p className="text-sm text-muted">{config.note}</p> : null}
 
-      <ResourceFormDialog config={config} item={form.item} open={form.open} onOpenChange={(open) => setForm((f) => ({ ...f, open }))} onSaved={resetPaging} />
+      {(() => {
+        const Custom = form.item ? config.editDialog : config.createDialog;
+        const onOpenChange = (open: boolean) => setForm((f) => ({ ...f, open }));
+        return Custom ? (
+          <Custom item={form.item} open={form.open} onOpenChange={onOpenChange} onSaved={resetPaging} />
+        ) : (
+          <ResourceFormDialog config={config} item={form.item} open={form.open} onOpenChange={onOpenChange} onSaved={resetPaging} />
+        );
+      })()}
       <ResourceDetailDialog config={config as unknown as ResourceConfig<N>} item={detailItem} onClose={() => setDetailItem(null)} />
       <ConfirmDialog
         open={target !== null}

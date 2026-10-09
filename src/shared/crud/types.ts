@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ComponentType, ReactNode } from 'react';
 import type { FieldValues } from 'react-hook-form';
 import type { z } from 'zod';
 import type { CreateOf, DetailOf, ItemOf, ResourceName, UpdateOf } from '@/shared/api';
@@ -39,7 +39,7 @@ interface BaseField {
 }
 
 export type FieldSpec =
-  | (BaseField & { kind: 'text'; upper?: boolean; inputMode?: 'text' | 'numeric' | 'decimal' | 'email'; maxLength?: number; placeholder?: string; autoComplete?: string })
+  | (BaseField & { kind: 'text'; inputType?: 'text' | 'datetime-local' | 'date'; upper?: boolean; inputMode?: 'text' | 'numeric' | 'decimal' | 'email'; maxLength?: number; placeholder?: string; autoComplete?: string })
   | (BaseField & { kind: 'select'; options?: SelectOption[]; source?: OptionSource; placeholder?: string })
   | (BaseField & { kind: 'checkbox' });
 
@@ -56,10 +56,14 @@ export interface FilterSpec {
   placeholder?: string;
 }
 
+type SchemaOf<V extends FieldValues> = z.ZodType<V, z.ZodTypeDef, unknown>;
+
 export interface FormConfig<N extends ResourceName, V extends FieldValues> {
-  fields: FieldSpec[];
-  createSchema: z.ZodType<V, z.ZodTypeDef, unknown>;
-  editSchema: z.ZodType<V, z.ZodTypeDef, unknown>;
+  /** Con función, los campos dependen del registro que se edita (p. ej. la zona horaria de su aeropuerto). */
+  fields: FieldSpec[] | ((item?: ItemOf<N>) => FieldSpec[]);
+  createSchema: SchemaOf<V>;
+  /** Con función, la validación depende del registro (p. ej. comparar horas de dos zonas). */
+  editSchema: SchemaOf<V> | ((item: ItemOf<N>) => SchemaOf<V>);
   defaults: (item?: ItemOf<N>) => V;
   toCreate: (values: V) => CreateOf<N>;
   /** Solo lo que cambió (PATCH parcial); `null` si no hay cambios. */
@@ -71,10 +75,21 @@ export interface DetailRow {
   value: ReactNode;
 }
 
+/** Props de un diálogo propio de alta o edición (cuando el formulario genérico no alcanza). */
+export interface FormDialogProps<N extends ResourceName> {
+  /** `undefined` = crear; con registro = editar. */
+  item?: ItemOf<N>;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSaved: () => void;
+}
+
 export interface ResourceConfig<N extends ResourceName, V extends FieldValues = FieldValues> {
   resource: N;
   /** Sustantivo en singular para frases: "aeropuerto". */
   noun: string;
+  /** El sustantivo es femenino: "Nueva ciudad" en lugar de "Nuevo ciudad". */
+  feminine?: boolean;
   /** Nombre de la tabla en plural: "Aeropuertos". */
   title: string;
   idOf: (item: ItemOf<N>) => string;
@@ -84,6 +99,12 @@ export interface ResourceConfig<N extends ResourceName, V extends FieldValues = 
   searchText?: (item: ItemOf<N>) => string;
   filters?: FilterSpec[];
   form?: FormConfig<N, V>;
+  /** Diálogo propio de alta (p. ej. mapas de asientos o tarifas); reemplaza al formulario genérico al crear. */
+  createDialog?: ComponentType<FormDialogProps<N>>;
+  /** El formulario genérico solo sirve para editar: no se ofrece crear con él. */
+  noCreate?: boolean;
+  /** Diálogo propio de edición; reemplaza al formulario genérico al editar. */
+  editDialog?: ComponentType<FormDialogProps<N>>;
   /** En lugar de un formulario, el botón de crear lleva a otra pantalla (p. ej. el asistente). */
   createLink?: { to: string; label: string };
   /** Sin `detail` no hay botón "Ver". Con `fetch`, el detalle se pide a GET /{id}. */

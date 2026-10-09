@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { FieldValues } from 'react-hook-form';
 import { useCreateMutation, useUpdateMutation, errorMessage, type ItemOf, type ResourceName } from '@/shared/api';
 import { es, fmt } from '@/shared/i18n';
@@ -21,10 +21,15 @@ export function ResourceFormDialog<N extends ResourceName, V extends FieldValues
   const create = useCreateMutation(config.resource, config.invalidates);
   const update = useUpdateMutation(config.resource, config.invalidates);
   const [apiError, setApiError] = useState<unknown>(null);
+  useEffect(() => {
+    if (!open) setApiError(null);
+  }, [open]);
   if (!form) return null;
   const editing = item !== undefined;
-  const fields = form.fields.filter((f) => (editing ? !f.createOnly : true));
-  const title = editing ? fmt(es.crud.editTitle, { noun: config.noun, id: config.idOf(item) }) : fmt(es.crud.newTitle, { noun: config.noun });
+  const allFields = typeof form.fields === 'function' ? form.fields(item) : form.fields;
+  const fields = allFields.filter((f) => (editing ? !f.createOnly : true));
+  const editSchema = typeof form.editSchema === 'function' ? (editing ? form.editSchema(item) : form.createSchema) : form.editSchema;
+  const title = editing ? fmt(es.crud.editTitle, { noun: config.noun, id: config.idOf(item) }) : fmt(config.feminine ? es.crud.newTitleF : es.crud.newTitle, { noun: config.noun });
 
   const submit = async (values: FieldValues) => {
     setApiError(null);
@@ -61,7 +66,7 @@ export function ResourceFormDialog<N extends ResourceName, V extends FieldValues
         ) : null}
         <ResourceForm
           fields={fields}
-          schema={(editing ? form.editSchema : form.createSchema) as never}
+          schema={(editing ? editSchema : form.createSchema) as never}
           defaultValues={form.defaults(item) as FieldValues}
           submitLabel={editing ? es.common.save : es.common.create}
           submittingLabel={editing ? es.common.saving : es.common.creating}

@@ -1,9 +1,19 @@
 import { Navigate, Outlet, type RouteObject } from 'react-router-dom';
+import { AircraftModelsPage } from '@/pages/AircraftModelsPage';
+import { AirlinesPage } from '@/pages/AirlinesPage';
 import { AirportsPage } from '@/pages/AirportsPage';
+import { CitiesPage } from '@/pages/CitiesPage';
+import { CountriesPage } from '@/pages/CountriesPage';
 import { DashboardPage } from '@/pages/DashboardPage';
+import { DeparturesPage } from '@/pages/DeparturesPage';
+import { FareFamiliesPage } from '@/pages/FareFamiliesPage';
+import { FaresPage } from '@/pages/FaresPage';
+import { FlightNumbersPage } from '@/pages/FlightNumbersPage';
 import { LoginPage } from '@/pages/LoginPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { PendingPage } from '@/pages/PendingPage';
+import { RoutesPage } from '@/pages/RoutesPage';
+import { SeatMapsPage } from '@/pages/SeatMapsPage';
 import { RootLayout } from './layout/RootLayout';
 import { RouteErrorPage } from './layout/RouteErrorPage';
 import { RequireAuth } from './RequireAuth';
@@ -28,7 +38,17 @@ export function buildRoutes(): RouteObject[] {
               children: [
                 { path: paths.home, element: <Navigate to={paths.dashboard} replace /> },
                 { path: paths.dashboard, element: <DashboardPage /> },
+                { path: paths.departures, element: <DeparturesPage /> },
+                { path: paths.flightNumbers, element: <FlightNumbersPage /> },
+                { path: paths.routes, element: <RoutesPage /> },
+                { path: paths.fares, element: <FaresPage /> },
                 { path: paths.airports, element: <AirportsPage /> },
+                { path: paths.airlines, element: <AirlinesPage /> },
+                { path: paths.aircraftModels, element: <AircraftModelsPage /> },
+                { path: paths.fareFamilies, element: <FareFamiliesPage /> },
+                { path: paths.seatMaps, element: <SeatMapsPage /> },
+                { path: paths.cities, element: <CitiesPage /> },
+                { path: paths.countries, element: <CountriesPage /> },
                 { path: paths.bookings, element: <PendingPage kind="bookings" /> },
                 { path: paths.audit, element: <PendingPage kind="audit" /> },
                 { path: paths.admins, element: <PendingPage kind="admins" /> },
