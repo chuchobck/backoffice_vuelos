@@ -9,7 +9,7 @@ const buttonVariants = cva(
     'inline-flex select-none items-center justify-center gap-2 rounded border-2 font-bold no-underline',
     'transition-colors duration-150 motion-reduce:transition-none',
     'disabled:cursor-not-allowed disabled:opacity-60 aria-disabled:cursor-not-allowed',
-    '[&_svg]:size-6 [&_svg]:shrink-0',
+    '[&_svg]:size-5 [&_svg]:shrink-0',
   ],
   {
     variants: {
@@ -25,8 +25,11 @@ const buttonVariants = cva(
           'border-transparent bg-transparent text-primary hover:bg-primary-tint',
         danger:
           'border-error bg-error text-error-foreground hover:opacity-90',
+        'danger-outline':
+          'border-error bg-surface text-error hover:bg-error-tint',
       },
       size: {
+        sm: 'min-h-11 px-3 text-sm',
         md: 'min-h-12 px-6 text-base',
         lg: 'min-h-14 px-8 text-lg',
         icon: 'size-12 p-0',

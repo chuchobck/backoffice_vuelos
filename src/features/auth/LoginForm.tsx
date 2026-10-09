@@ -72,12 +72,6 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
           <p>{submitError}</p>
         </Alert>
       ) : null}
-      <Field label={a.email} error={errors.email?.message} required>
-        <Input {...register('email')} type="email" autoComplete="username" inputMode="email" spellCheck={false} autoCapitalize="none" />
-      </Field>
-      <Field label={a.password} hint={a.passwordHint} error={errors.password?.message} required>
-        <PasswordInput {...register('password')} autoComplete="current-password" />
-      </Field>
       <Controller
         control={control}
         name="demo"
@@ -95,6 +89,12 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
           />
         )}
       />
+      <Field label={a.email} error={errors.email?.message} required>
+        <Input {...register('email')} type="email" autoComplete="username" inputMode="email" spellCheck={false} autoCapitalize="none" />
+      </Field>
+      <Field label={a.password} hint={a.passwordHint} error={errors.password?.message} required>
+        <PasswordInput {...register('password')} autoComplete="current-password" />
+      </Field>
       <Button type="submit" size="lg" loading={isSubmitting} loadingText={a.submitting}>
         <LogIn aria-hidden="true" />
         {a.submit}

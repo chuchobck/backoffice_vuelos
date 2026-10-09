@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import { forwardRef, type ComponentPropsWithoutRef, type ElementRef, type ReactNode } from 'react';
 import { es } from '@/shared/i18n';
 import { cn } from '@/shared/lib/cn';
+import { Alert } from './alert';
 import { Button } from './button';
 
 export const Dialog = DialogPrimitive.Root;
@@ -64,6 +65,8 @@ interface ConfirmDialogProps {
   loading?: boolean;
   /** Acción destructiva: el botón de confirmar usa el estilo de peligro. */
   destructive?: boolean;
+  /** Mensaje de un intento fallido: el diálogo sigue abierto y lo anuncia (role="alert"). */
+  error?: string | null;
 }
 
 /**
@@ -80,12 +83,18 @@ export function ConfirmDialog({
   onConfirm,
   loading = false,
   destructive = false,
+  error,
 }: ConfirmDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent role="alertdialog" hideClose>
         <DialogTitle>{title}</DialogTitle>
         <DialogDescription>{description}</DialogDescription>
+        {error ? (
+          <Alert variant="error" live="assertive">
+            <p>{error}</p>
+          </Alert>
+        ) : null}
         <DialogFooter>
           <DialogClose asChild>
             {/* Foco inicial en la opción segura de una acción destructiva (patrón alertdialog de WAI-ARIA). */}

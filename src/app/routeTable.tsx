@@ -1,4 +1,5 @@
 import { Navigate, Outlet, type RouteObject } from 'react-router-dom';
+import { AirportsPage } from '@/pages/AirportsPage';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { LoginPage } from '@/pages/LoginPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
@@ -27,6 +28,7 @@ export function buildRoutes(): RouteObject[] {
               children: [
                 { path: paths.home, element: <Navigate to={paths.dashboard} replace /> },
                 { path: paths.dashboard, element: <DashboardPage /> },
+                { path: paths.airports, element: <AirportsPage /> },
                 { path: paths.bookings, element: <PendingPage kind="bookings" /> },
                 { path: paths.audit, element: <PendingPage kind="audit" /> },
                 { path: paths.admins, element: <PendingPage kind="admins" /> },
