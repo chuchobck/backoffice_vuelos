@@ -3,6 +3,7 @@ import { es, fmt } from '@/shared/i18n';
 import { cabinLabel } from '@/shared/lib/labels';
 import { ActiveBadge } from '@/shared/ui';
 import type { SeatMap, SeatMapSummary } from '@/shared/api';
+import { SeatMapCreateDialog } from './SeatMapCreateDialog';
 import { SeatMapEditSchema, type SeatMapValues } from './schemas';
 
 const t = es.entities.seatMaps;
@@ -31,6 +32,7 @@ export const seatMapsConfig: ResourceConfig<'seatMaps', SeatMapValues> = {
   isActive: (m) => m.active,
   invalidates: ['departures'],
   noCreate: true,
+  createDialog: SeatMapCreateDialog,
   columns: [
     { id: 'name', header: t.cols.name, cell: (m) => m.name, sortValue: (m) => m.name },
     { id: 'airline', header: t.cols.airline, cell: (m) => m.airline, sortValue: (m) => m.airline },
