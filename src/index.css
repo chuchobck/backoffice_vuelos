@@ -1,0 +1,168 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Tokens de diseño del backoffice. Valores en canales RGB para permitir opacidad en Tailwind.
+ * Contrastes: texto ≥ 4.5:1 y componentes ≥ 3:1 (modo claro y oscuro).
+ */
+@layer base {
+  :root {
+    color-scheme: light;
+
+    --color-background: 243 245 249; /* #F3F5F9 */
+    --color-surface: 255 255 255;
+    --color-foreground: 27 31 36; /* #1B1F24 · 16:1 sobre superficie */
+    --color-muted: 74 85 104; /* #4A5568 · 7.5:1 */
+    --color-input: 107 118 134; /* #6B7686 · 4.6:1 (borde de campos) */
+    --color-border: 195 204 217; /* #C3CCD9 */
+
+    --color-primary: 31 56 100; /* #1F3864 · 11:1 con texto blanco */
+    --color-primary-hover: 20 37 68; /* #142544 */
+    --color-primary-foreground: 255 255 255;
+    --color-primary-tint: 232 237 246; /* #E8EDF6 */
+
+    --color-sidebar: 20 37 68; /* #142544 */
+    --color-sidebar-foreground: 255 255 255;
+    --color-sidebar-muted: 201 212 234; /* #C9D4EA · 9:1 sobre sidebar */
+    --color-sidebar-active: 31 56 100;
+    --color-sidebar-border: 48 72 118;
+
+    --color-success: 20 99 45; /* #14632D · 7.6:1 */
+    --color-success-foreground: 255 255 255;
+    --color-success-tint: 230 244 234;
+    --color-error: 164 22 26; /* #A4161A · 7.4:1 */
+    --color-error-foreground: 255 255 255;
+    --color-error-tint: 253 236 236;
+    --color-warning: 92 61 0; /* #5C3D00 */
+    --color-warning-tint: 255 244 214; /* #FFF4D6 · 8:1 */
+
+    --color-focus: 11 87 208; /* #0B57D0 · 6.5:1 */
+    --color-overlay: 10 20 40;
+    --color-shadow: 20 30 50;
+
+    --radius: 8px;
+  }
+
+  .dark {
+    color-scheme: dark;
+
+    --color-background: 15 22 36; /* #0F1624 */
+    --color-surface: 22 32 50; /* #162032 */
+    --color-foreground: 232 238 247; /* #E8EEF7 · 14:1 */
+    --color-muted: 168 182 204; /* #A8B6CC · 7.9:1 */
+    --color-input: 130 146 172; /* #8292AC · 5.2:1 */
+    --color-border: 48 64 92;
+
+    --color-primary: 143 176 240; /* #8FB0F0 · 8:1 */
+    --color-primary-hover: 176 200 247;
+    --color-primary-foreground: 10 22 48; /* #0A1630 · 8:1 sobre primario */
+    --color-primary-tint: 30 45 78;
+
+    --color-sidebar: 9 15 28;
+    --color-sidebar-foreground: 232 238 247;
+    --color-sidebar-muted: 168 182 204;
+    --color-sidebar-active: 31 56 100;
+    --color-sidebar-border: 30 42 66;
+
+    --color-success: 110 211 143;
+    --color-success-foreground: 8 40 20;
+    --color-success-tint: 17 50 34;
+    --color-error: 255 143 134;
+    --color-error-foreground: 42 11 8;
+    --color-error-tint: 60 25 25;
+    --color-warning: 255 213 138;
+    --color-warning-tint: 61 46 10;
+
+    --color-focus: 141 180 255; /* #8DB4FF · 8:1 */
+    --color-overlay: 0 0 0;
+    --color-shadow: 0 0 0;
+  }
+
+  html {
+    font-size: 100%;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    scroll-padding-block: 5rem;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
+
+  body {
+    @apply bg-background font-sans text-base text-foreground antialiased;
+    line-height: 1.5;
+    min-width: 320px;
+    overflow-wrap: break-word;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-bold text-foreground;
+    text-wrap: balance;
+  }
+
+  h1 {
+    @apply text-2xl tracking-tight text-primary;
+  }
+
+  p {
+    max-width: 75ch;
+  }
+
+  a {
+    @apply text-primary underline underline-offset-4;
+  }
+
+  a:hover {
+    @apply decoration-2;
+  }
+
+  img,
+  svg,
+  video {
+    max-width: 100%;
+  }
+
+  :focus-visible {
+    outline: 3px solid rgb(var(--color-focus));
+    outline-offset: 2px;
+  }
+
+  [tabindex='-1']:focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  @media (forced-colors: active) {
+    :focus-visible {
+      outline: 3px solid CanvasText;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  /* Sobre la barra lateral oscura el foco usa un amarillo claro para mantener el contraste. */
+  .sidebar-scope {
+    --color-focus: 255 213 74;
+  }
+
+  .container-page {
+    @apply mx-auto w-full max-w-content px-4 sm:px-6 lg:px-8;
+  }
+}

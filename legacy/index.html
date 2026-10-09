@@ -1,0 +1,1807 @@
+<!doctype html>
+<html lang="es-EC">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Backoffice de Vuelos</title>
+<link rel="icon" href="data:,">
+<meta name="description" content="Sistema de administración del módulo de vuelos del Booking Prototipo.">
+<style>
+:root{
+  --primary:#1F3864; --primary-dark:#142544; --primary-soft:#e8edf6;
+  --text:#1b1f24; --muted:#4a5568; --border:#c3ccd9; --bg:#f3f5f9; --surface:#fff;
+  --error:#a4161a; --error-bg:#fdecec; --ok:#14632d; --ok-bg:#e6f4ea;
+  --warn-bg:#fff4d6; --warn:#5c3d00; --focus:#0b57d0; --focus-dark:#ffd54a;
+  --font:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;font-family:var(--font);font-size:16px;line-height:1.5;color:var(--text);background:var(--bg);overflow-x:hidden}
+h1{font-size:1.5rem;margin:0 0 .25rem;color:var(--primary);line-height:1.25}
+h2{font-size:1.15rem;margin:1.25rem 0 .5rem;color:var(--primary)}
+h3{font-size:1rem;margin:1rem 0 .4rem}
+p{margin:.25rem 0 .75rem}
+a{color:var(--primary);text-decoration:underline}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.sidebar :focus-visible,.topbar :focus-visible,.login-card .btn-primary:focus-visible{outline-color:var(--focus-dark)}
+.skip{position:absolute;left:-999px;top:0;background:#fff;color:var(--primary);padding:.75rem 1rem;z-index:100;font-weight:600}
+.skip:focus{left:8px;top:8px}
+.linklist{padding-left:1.2rem}
+.linklist a{display:inline-flex;align-items:center;min-height:44px}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* Botones: objetivos de al menos 44 px */
+.btn{font:inherit;min-height:44px;min-width:44px;padding:.55rem 1rem;border-radius:6px;border:1px solid var(--primary);background:#fff;color:var(--primary);cursor:pointer;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:.4rem;text-decoration:none}
+.btn:hover{background:var(--primary-soft)}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-primary:hover{background:var(--primary-dark)}
+.btn-danger{border-color:var(--error);color:var(--error)}
+.btn-danger:hover{background:var(--error-bg)}
+.btn-danger.solid{background:var(--error);color:#fff}
+.btn[disabled],.btn[aria-disabled="true"]{opacity:.55;cursor:not-allowed}
+.btn-sm{padding:.4rem .7rem}
+.actions{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center}
+
+/* Formularios */
+.field{margin:0 0 1rem;min-width:0}
+.field label,.field .lbl{display:block;font-weight:600;margin-bottom:.25rem}
+.field .req{color:var(--error)}
+.field .hint{display:block;color:var(--muted);font-size:.875rem;margin-top:.2rem}
+input[type=text],input[type=search],input[type=email],input[type=password],input[type=number],input[type=date],input[type=time],input[type=datetime-local],select{
+  font:inherit;width:100%;min-height:44px;padding:.5rem .65rem;border:1px solid #6b7686;border-radius:6px;background:#fff;color:var(--text)}
+input[type=checkbox],input[type=radio]{width:24px;height:24px;margin:0;flex:none;accent-color:var(--primary)}
+.check{display:flex;align-items:center;gap:.6rem;min-height:44px}
+.check label{margin:0;font-weight:500}
+[aria-invalid="true"]{border-color:var(--error)!important;border-width:2px!important}
+.err{color:var(--error);font-size:.9rem;margin:.25rem 0 0;min-height:0}
+.err:empty{display:none}
+.alert{padding:.75rem 1rem;border-radius:6px;border:1px solid;margin:0 0 1rem}
+.alert-error{background:var(--error-bg);border-color:var(--error);color:#7a1013}
+.alert-ok{background:var(--ok-bg);border-color:var(--ok);color:#0d4a20}
+.alert-warn{background:var(--warn-bg);border-color:#b7791f;color:var(--warn)}
+.alert-info{background:var(--primary-soft);border-color:var(--primary);color:var(--primary-dark)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));gap:0 1rem}
+fieldset{border:1px solid var(--border);border-radius:8px;padding:.75rem 1rem 0;margin:0 0 1rem;min-width:0}
+legend{font-weight:700;padding:0 .4rem;color:var(--primary)}
+
+/* Layout del panel */
+.app{min-height:100vh;display:flex;flex-direction:column}
+.topbar{background:var(--primary);color:#fff;display:flex;flex-wrap:wrap;gap:.5rem 1rem;align-items:center;justify-content:space-between;padding:.5rem 1rem}
+.topbar .brand{font-weight:700;font-size:1.1rem}
+.topbar .who{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;font-size:.9rem;min-width:0}
+.topbar .who span{overflow-wrap:anywhere}
+.topbar .btn{background:transparent;color:#fff;border-color:#fff}
+.topbar .btn:hover{background:var(--primary-dark)}
+.demo-badge{background:#ffd54a;color:#3a2a00;font-weight:700;padding:.2rem .6rem;border-radius:999px;font-size:.85rem}
+.demo-banner{background:var(--warn-bg);color:var(--warn);border-bottom:2px solid #b7791f;padding:.5rem 1rem;font-size:.95rem}
+.shell{display:flex;flex:1;min-height:0}
+.sidebar{background:var(--primary-dark);color:#fff;width:240px;flex:none;padding:.5rem 0}
+.sidebar ul{list-style:none;margin:0;padding:0}
+.sidebar .grp{font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:#c9d4ea;padding:.75rem 1rem .25rem}
+.sidebar a{display:flex;align-items:center;min-height:44px;padding:.4rem 1rem;color:#fff;text-decoration:none;border-left:4px solid transparent}
+.sidebar a:hover{background:var(--primary)}
+.sidebar a[aria-current="page"]{background:var(--primary);border-left-color:var(--focus-dark);font-weight:700}
+.sidebar .tag{margin-left:auto;font-size:.7rem;background:#ffd54a;color:#3a2a00;border-radius:4px;padding:0 .35rem}
+main{flex:1;min-width:0;padding:1.25rem 1rem 3rem;max-width:1200px;width:100%}
+main:focus{outline:none}
+h1:focus{outline:none}
+.page-head{display:flex;flex-wrap:wrap;gap:.5rem 1rem;justify-content:space-between;align-items:flex-start;margin-bottom:1rem}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:1rem;margin-bottom:1rem}
+.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,170px),1fr));gap:.75rem}
+.stat{background:#fff;border:1px solid var(--border);border-radius:8px;padding:.75rem 1rem;text-decoration:none;color:inherit;display:block}
+.stat:hover{border-color:var(--primary)}
+.stat b{display:block;font-size:1.8rem;color:var(--primary);line-height:1.2}
+.stat span{color:var(--muted);font-size:.95rem}
+
+/* Tablas */
+.table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:8px;background:#fff;max-width:100%}
+table{border-collapse:collapse;width:100%;min-width:560px}
+caption{text-align:left;padding:.5rem .75rem;color:var(--muted);font-size:.9rem}
+th,td{text-align:left;padding:.55rem .75rem;border-bottom:1px solid #e1e6ee;vertical-align:middle}
+th{background:var(--primary-soft);color:var(--primary-dark);font-size:.9rem;white-space:nowrap}
+tr:last-child td{border-bottom:0}
+tr.inactive td{color:var(--muted);background:#f7f7f9}
+.badge{display:inline-block;padding:.05rem .5rem;border-radius:999px;font-size:.8rem;font-weight:600;background:var(--ok-bg);color:var(--ok)}
+.badge.off{background:#eceef2;color:#3d4654}
+.toolbar{display:flex;flex-wrap:wrap;gap:.5rem 1rem;align-items:flex-end;margin-bottom:.75rem}
+.toolbar .field{margin:0;flex:1 1 180px}
+.pager{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;justify-content:space-between;margin-top:.75rem}
+
+/* Asistente */
+.steps{list-style:none;display:flex;flex-wrap:wrap;gap:.4rem;padding:0;margin:0 0 1rem;counter-reset:s}
+.steps li{flex:1 1 130px;background:#fff;border:1px solid var(--border);border-radius:8px;padding:.45rem .6rem;font-size:.9rem;display:flex;gap:.5rem;align-items:center;min-height:44px}
+.steps li::before{counter-increment:s;content:counter(s);flex:none;width:26px;height:26px;border-radius:50%;background:#e1e6ee;color:var(--text);display:grid;place-items:center;font-weight:700}
+.steps li[aria-current="step"]{border-color:var(--primary);background:var(--primary-soft);font-weight:700}
+.steps li[aria-current="step"]::before{background:var(--primary);color:#fff}
+.steps li.done::before{content:"✓";background:var(--ok);color:#fff}
+.dl{display:grid;grid-template-columns:minmax(110px,max-content) 1fr;gap:.25rem 1rem;margin:0}
+.dl dt{font-weight:600;color:var(--muted)}
+.dl dd{margin:0;overflow-wrap:anywhere}
+.progress-list{list-style:none;padding:0;margin:0}
+.progress-list li{padding:.35rem 0;border-bottom:1px solid #e1e6ee;overflow-wrap:anywhere}
+.pending{border:2px dashed #b7791f;background:var(--warn-bg);color:var(--warn);border-radius:8px;padding:1rem}
+
+/* Diálogo */
+dialog{border:0;border-radius:10px;padding:0;max-width:min(560px,calc(100vw - 24px));width:100%;box-shadow:0 10px 40px rgba(0,0,0,.35)}
+dialog::backdrop{background:rgba(10,20,40,.55)}
+.dlg-body{padding:1rem 1.25rem 1.25rem;max-height:85vh;overflow:auto}
+.dlg-body h2{margin-top:0}
+.toastbox{position:fixed;left:50%;transform:translateX(-50%);bottom:12px;z-index:200;max-width:calc(100vw - 24px)}
+.toast{background:var(--primary-dark);color:#fff;padding:.7rem 1rem;border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,.3)}
+
+/* Login */
+.login-wrap{min-height:100vh;display:grid;place-items:center;padding:1rem;background:linear-gradient(160deg,var(--primary) 0 38%,var(--bg) 38%)}
+.login-card{background:#fff;border-radius:12px;max-width:420px;width:100%;padding:1.5rem;box-shadow:0 10px 40px rgba(0,0,0,.2)}
+.login-card h1{font-size:1.4rem}
+
+@media (max-width:760px){
+  .shell{flex-direction:column}
+  .sidebar{width:100%;padding:0}
+  .sidebar ul{display:flex;overflow-x:auto;white-space:nowrap}
+  .sidebar .grp{display:none}
+  .sidebar a{border-left:0;border-bottom:4px solid transparent}
+  .sidebar a[aria-current="page"]{border-bottom-color:var(--focus-dark)}
+  .dl{grid-template-columns:1fr}
+  .dl dt{margin-top:.4rem}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<a class="skip" href="#contenido">Saltar al contenido</a>
+<div id="root"></div>
+<div class="toastbox" id="toastbox" role="status" aria-live="polite"></div>
+<script src="config.js"></script>
+<script>
+"use strict";
+/* ==========================================================================
+   Backoffice de Vuelos — un solo archivo, JavaScript vanilla, sin build.
+   Todo texto que viene de la API se inserta con textContent (nunca innerHTML).
+   ========================================================================== */
+
+/* ---------- Utilidades de DOM ---------- */
+function h(tag, attrs, ...kids) {
+  const e = document.createElement(tag);
+  let value;
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v == null || v === false) continue;
+    if (k === "class") e.className = v;
+    else if (k === "text") e.textContent = v;
+    else if (k === "value") value = v;
+    else if (k === "checked") e.checked = !!v;
+    else if (k.startsWith("on") && typeof v === "function") e.addEventListener(k.slice(2), v);
+    else e.setAttribute(k, v === true ? "" : String(v));
+  }
+  for (const c of kids.flat(Infinity)) {
+    if (c == null || c === false) continue;
+    e.append(c.nodeType ? c : document.createTextNode(String(c)));
+  }
+  if (value !== undefined) e.value = value;
+  return e;
+}
+const $ = (s, r = document) => r.querySelector(s);
+function clear(el) { while (el.firstChild) el.removeChild(el.firstChild); return el; }
+let uidN = 0;
+const nextId = (p = "id") => `${p}-${++uidN}`;
+function toast(msg) {
+  const box = $("#toastbox");
+  const t = h("div", { class: "toast", text: msg });
+  box.append(t);
+  setTimeout(() => t.remove(), 4500);
+}
+
+/* ---------- Fechas: la API usa UTC; el panel muestra hora de Ecuador (UTC−5, sin horario de verano) ---------- */
+const EC_TZ = "America/Guayaquil";
+function fmtEC(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (isNaN(d)) return "—";
+  return new Intl.DateTimeFormat("es-EC", { timeZone: EC_TZ, dateStyle: "medium", timeStyle: "short" }).format(d);
+}
+function fmtDateEC(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return isNaN(d) ? "—" : new Intl.DateTimeFormat("es-EC", { timeZone: EC_TZ, dateStyle: "medium" }).format(d);
+}
+/** "2026-11-02" + "13:05" (hora de Ecuador) → "2026-11-02T18:05:00Z" */
+function ecToUtcIso(dateStr, timeStr, addDays = 0) {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const [hh, mm] = timeStr.split(":").map(Number);
+  const t = Date.UTC(y, m - 1, d, hh + 5, mm) + addDays * 86400000;
+  return new Date(t).toISOString().replace(".000Z", "Z");
+}
+/** ISO UTC → "YYYY-MM-DDTHH:MM" en hora de Ecuador, para <input type=datetime-local>. */
+function utcIsoToEcInput(iso) {
+  if (!iso) return "";
+  return new Date(new Date(iso).getTime() - 5 * 3600000).toISOString().slice(0, 16);
+}
+function ecInputToUtcIso(v) { return ecToUtcIso(v.slice(0, 10), v.slice(11, 16)); }
+function todayEC() { return new Date(Date.now() - 5 * 3600000).toISOString().slice(0, 10); }
+
+/* ---------- Errores de la API (ProblemDetails) ---------- */
+class ApiError extends Error {
+  constructor(status, body = {}, retryAfter = null) {
+    super(`HTTP ${status}`);
+    this.status = status;
+    this.code = body.code || null;
+    this.detail = body.detail || "";
+    this.invalidParams = Array.isArray(body.invalidParams) ? body.invalidParams : [];
+    this.retryAfter = retryAfter;
+  }
+}
+const PARAM_LABELS = {
+  code: "Código", name: "Nombre", iso3: "ISO3", country: "País", cityId: "Ciudad", timeZone: "Zona horaria",
+  ticketPrefix: "Prefijo de boleto", airline: "Aerolínea", cabinClass: "Cabina", changeable: "Cambiable",
+  cancellationPenaltyPercent: "Penalización", marketingCarrier: "Aerolínea comercial", number: "Número",
+  operatingCarrier: "Aerolínea operadora", origin: "Origen", destination: "Destino", flightNumber: "Número de vuelo",
+  seatMapId: "Mapa de asientos", scheduledDeparture: "Salida", scheduledArrival: "Llegada", departureTerminal: "Terminal de salida",
+  arrivalTerminal: "Terminal de llegada", cabins: "Cabinas", departureId: "Salida", fareFamilyId: "Familia tarifaria",
+  currency: "Moneda", extraBagPrice: "Maleta extra", changeFee: "Cargo por cambio", prices: "Precios", status: "Estado",
+  email: "Correo", password: "Contraseña", limit: "Límite", cursor: "Cursor", aircraftModel: "Equipo",
+};
+// Mensajes técnicos conocidos del backend (en inglés) → español claro. Si no coincide, se usa un mensaje genérico.
+const DETAIL_ES = [
+  [/departure must be in the future/i, "La salida debe ser en el futuro."],
+  [/must be after scheduledDeparture/i, "La llegada debe ser posterior a la salida."],
+  [/must be different from origin/i, "El destino debe ser distinto del origen."],
+  [/does not exist or is inactive/i, "Una de las referencias no existe o está inactiva."],
+  [/seat map belongs to airline/i, "El mapa de asientos no pertenece a la aerolínea que opera el vuelo."],
+  [/seat map has no .* cabin/i, "El mapa de asientos no tiene esa cabina."],
+  [/quota cannot exceed/i, "El cupo no puede superar los asientos físicos de la cabina."],
+  [/fare family belongs to airline/i, "La familia tarifaria es de otra aerolínea."],
+  [/has no .* cabin/i, "La salida no tiene la cabina de esa familia tarifaria."],
+  [/must include the ADULT price/i, "Falta el precio de adulto."],
+  [/already been used|already exists|duplicate/i, "Ya existe un registro con esos datos."],
+  [/no longer on sale/i, "La salida ya no está a la venta."],
+  [/already departed/i, "El vuelo ya despegó."],
+  [/scheduled in the past/i, "La salida está en el pasado."],
+];
+function friendly(e, ctx = {}) {
+  if (!(e instanceof ApiError)) return "Ocurrió un error inesperado. Inténtalo de nuevo.";
+  const fields = e.invalidParams.map((p) => PARAM_LABELS[String(p.name).split(/[.\[]/)[0]] || String(p.name)).filter((v, i, a) => a.indexOf(v) === i);
+  const extra = fields.length ? ` Revisa: ${fields.join(", ")}.` : "";
+  const known = DETAIL_ES.find(([re]) => re.test(e.detail));
+  switch (e.status) {
+    case 0: return "No se pudo conectar con la API. Revisa tu conexión o prueba el modo demo.";
+    case 400: return `Los datos enviados no son válidos.${extra}`;
+    case 401: return (ctx.login || e._login) ? "Correo o contraseña incorrectos." : "Tu sesión no es válida o expiró. Inicia sesión de nuevo.";
+    case 403: return "Tu cuenta no tiene permiso de administrador para realizar esta acción.";
+    case 404: return "No se encontró el registro. Puede que ya no exista.";
+    case 409: return known ? known[1] : "La operación choca con el estado actual: el registro ya existe o lo usan otros registros activos.";
+    case 413: case 415: return "La solicitud no tiene un formato aceptado.";
+    case 422: return (known ? known[1] : "Los datos no cumplen las reglas del negocio: una referencia no existe, está inactiva o el horario no es válido.") + extra;
+    case 429: return `Demasiadas solicitudes.${e.retryAfter ? ` Espera ${e.retryAfter} s e inténtalo de nuevo.` : " Espera un momento e inténtalo de nuevo."}`;
+    default: return e.status >= 500 ? "La API tuvo un problema. Inténtalo más tarde." : "No se pudo completar la operación.";
+  }
+}
+
+/* ---------- Sesión y cliente HTTP ---------- */
+const CFG = window.APP_CONFIG || {};
+const API_URL = String(CFG.API_URL || "").replace(/\/+$/, "");
+const RT_KEY = "bo_vuelos_refresh";
+const session = { access: null, refresh: null, demo: false, user: null };
+let refreshing = null;
+let onSessionLost = () => {};
+
+function saveRefresh(rt) { try { rt ? sessionStorage.setItem(RT_KEY, rt) : sessionStorage.removeItem(RT_KEY); } catch (_) {} }
+function loadRefresh() { try { return sessionStorage.getItem(RT_KEY); } catch (_) { return null; } }
+function setTokens(r) {
+  session.access = r.access_token;
+  session.refresh = r.refresh_token;
+  saveRefresh(r.refresh_token);
+}
+
+async function rawFetch(method, path, { body, query, token } = {}) {
+  const url = new URL(API_URL + path);
+  for (const [k, v] of Object.entries(query || {})) if (v !== undefined && v !== null && v !== "") url.searchParams.set(k, v);
+  const headers = { Accept: "application/json, application/problem+json" };
+  if (body !== undefined) headers["Content-Type"] = "application/json";
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), 30000);
+  let res;
+  try {
+    res = await fetch(url, { method, headers, body: body !== undefined ? JSON.stringify(body) : undefined, signal: ctl.signal, cache: "no-store" });
+  } catch (_) {
+    throw new ApiError(0);
+  } finally { clearTimeout(timer); }
+  if (res.status === 204) return null;
+  let data = null;
+  try { data = await res.json(); } catch (_) { data = null; }
+  if (!res.ok) throw new ApiError(res.status, data || {}, res.headers.get("Retry-After"));
+  return data;
+}
+
+/** Renueva el token UNA sola vez a la vez: el refresh token rota y reusar uno viejo revoca la sesión. */
+function doRefresh() {
+  if (refreshing) return refreshing;
+  refreshing = (async () => {
+    if (!session.refresh) throw new ApiError(401);
+    setTokens(await rawFetch("POST", "/auth/refresh", { body: { refresh_token: session.refresh } }));
+  })().finally(() => { refreshing = null; });
+  return refreshing;
+}
+
+async function api(method, path, opts = {}) {
+  if (session.demo) return demoRequest(method, path, opts);
+  try {
+    return await rawFetch(method, path, { ...opts, token: session.access });
+  } catch (e) {
+    if (!(e instanceof ApiError) || e.status !== 401) throw e;
+  }
+  try { await doRefresh(); } catch (_) { endSession("Tu sesión expiró. Inicia sesión de nuevo."); throw new ApiError(401); }
+  try {
+    return await rawFetch(method, path, { ...opts, token: session.access });
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 401) endSession("Tu sesión expiró. Inicia sesión de nuevo.");
+    throw e;
+  }
+}
+function endSession(msg) {
+  session.access = null; session.refresh = null; session.user = null; session.demo = false;
+  saveRefresh(null);
+  onSessionLost(msg);
+}
+
+/** Recorre todas las páginas de una lista (cursor) hasta un máximo razonable. */
+async function loadAll(path, query = {}, maxPages = 12) {
+  const out = [];
+  let cursor;
+  for (let i = 0; i < maxPages; i++) {
+    const page = await api("GET", path, { query: { ...query, limit: 50, cursor } });
+    out.push(...page.items);
+    if (!page.nextCursor) break;
+    cursor = page.nextCursor;
+  }
+  return out;
+}
+const catalogCache = {};
+function cached(key, loader) {
+  if (!catalogCache[key]) catalogCache[key] = loader().catch((e) => { delete catalogCache[key]; throw e; });
+  return catalogCache[key];
+}
+function invalidateCache() { for (const k of Object.keys(catalogCache)) delete catalogCache[k]; }
+
+/* ---------- Componentes: campos, formularios, diálogos ---------- */
+const REQ_MSG = "Este campo es obligatorio.";
+/**
+ * spec: {name,label,type(text|number|select|checkbox|date|time|datetime),required,max,min,maxVal,pattern,msg,
+ *        hint,upper,options:[{value,label}],custom(value,all)=>msg,placeholder,readonly,step}
+ */
+function mkField(spec, initial) {
+  const id = nextId("f");
+  const errId = id + "-e", hintId = id + "-h";
+  let input;
+  const t = spec.type || "text";
+  if (t === "select") {
+    input = h("select", { id, name: spec.name }, (spec.options || []).map((o) => h("option", { value: o.value, text: o.label })));
+  } else if (t === "checkbox") {
+    input = h("input", { id, name: spec.name, type: "checkbox" });
+  } else {
+    const typ = { text: "text", number: "text", date: "date", time: "time", datetime: "datetime-local", email: "email", password: "password" }[t] || "text";
+    input = h("input", {
+      id, name: spec.name, type: typ, maxlength: spec.max, placeholder: spec.placeholder, autocomplete: spec.autocomplete || "off",
+      inputmode: t === "number" ? "numeric" : spec.inputmode, readonly: spec.readonly, spellcheck: "false",
+    });
+  }
+  const err = h("p", { class: "err", id: errId, role: "alert" });
+  const hint = spec.hint ? h("span", { class: "hint", id: hintId, text: spec.hint }) : null;
+  input.setAttribute("aria-describedby", [hint && hintId, errId].filter(Boolean).join(" "));
+  if (spec.required) input.setAttribute("aria-required", "true");
+  const api_ = {
+    spec, input, errEl: err,
+    get() {
+      if (t === "checkbox") return input.checked;
+      let v = input.value;
+      if (t !== "select" && t !== "password") v = v.trim();
+      if (spec.upper) v = v.toUpperCase();
+      return v;
+    },
+    set(v) { if (t === "checkbox") input.checked = !!v; else input.value = v == null ? "" : v; },
+    setOptions(opts, keep = true) {
+      const cur = input.value;
+      clear(input);
+      for (const o of opts) input.append(h("option", { value: o.value, text: o.label }));
+      if (keep && opts.some((o) => o.value === cur)) input.value = cur;
+    },
+    validate(all = {}) {
+      const v = api_.get();
+      let m = "";
+      if (t === "checkbox") m = "";
+      else if (v === "" || v == null) m = spec.required ? REQ_MSG : "";
+      else {
+        if (spec.max && v.length > spec.max) m = `Máximo ${spec.max} caracteres.`;
+        else if (spec.pattern && !spec.pattern.test(v)) m = spec.msg || "El formato no es válido.";
+        else if (t === "number") {
+          if (!/^\d+$/.test(v)) m = "Escribe un número entero.";
+          else if (spec.min !== undefined && +v < spec.min) m = `Debe ser al menos ${spec.min}.`;
+          else if (spec.maxVal !== undefined && +v > spec.maxVal) m = `Debe ser como máximo ${spec.maxVal}.`;
+        }
+        if (!m && spec.custom) m = spec.custom(v, all) || "";
+      }
+      api_.showError(m);
+      return m;
+    },
+    showError(m) {
+      err.textContent = m || "";
+      if (m) input.setAttribute("aria-invalid", "true"); else input.removeAttribute("aria-invalid");
+    },
+  };
+  api_.set(initial !== undefined ? initial : spec.default);
+  input.addEventListener("blur", () => api_.validate(api_.all ? api_.all() : {}));
+  input.addEventListener("input", () => { if (input.getAttribute("aria-invalid")) api_.validate(api_.all ? api_.all() : {}); });
+  input.addEventListener("change", () => { if (input.getAttribute("aria-invalid")) api_.validate(api_.all ? api_.all() : {}); });
+  const lbl = h("label", { for: id }, spec.label, spec.required ? h("span", { class: "req", "aria-hidden": "true", text: " *" }) : null,
+    spec.required ? h("span", { class: "sr-only", text: " (obligatorio)" }) : null);
+  api_.el = t === "checkbox"
+    ? h("div", { class: "field" }, h("div", { class: "check" }, input, lbl), hint, err)
+    : h("div", { class: "field" }, lbl, input, hint, err);
+  return api_;
+}
+
+/** Formulario con validación al salir del campo y al enviar, sin borrar lo escrito. */
+function mkForm(specs, values, { onSubmit, submitLabel = "Guardar", onCancel, cols = false } = {}) {
+  const fields = {};
+  const wrap = h("div", { class: cols ? "grid2" : "" });
+  const formErr = h("div", { class: "alert alert-error", role: "alert", style: "display:none" });
+  for (const s of specs) {
+    const f = mkField(s, values ? values[s.name] : undefined);
+    fields[s.name] = f;
+    wrap.append(f.el);
+  }
+  const all = () => Object.fromEntries(Object.entries(fields).map(([k, f]) => [k, f.get()]));
+  Object.values(fields).forEach((f) => (f.all = all));
+  const submit = h("button", { class: "btn btn-primary", type: "submit", text: submitLabel });
+  const cancel = onCancel ? h("button", { class: "btn", type: "button", text: "Cancelar", onclick: onCancel }) : null;
+  const form = h("form", { novalidate: true }, formErr, wrap, h("div", { class: "actions" }, submit, cancel));
+  const showFormErr = (m) => { formErr.textContent = m || ""; formErr.style.display = m ? "" : "none"; };
+  form.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    showFormErr("");
+    let first = null;
+    for (const f of Object.values(fields)) {
+      if (f.validate(all()) && !first) first = f;
+    }
+    if (first) { showFormErr("Corrige los campos marcados antes de continuar."); first.input.focus(); return; }
+    submit.disabled = true;
+    const old = submit.textContent;
+    submit.textContent = "Guardando…";
+    try { await onSubmit(all(), fields); }
+    catch (e) {
+      const names = (e instanceof ApiError ? e.invalidParams : []).map((p) => String(p.name).split(/[.\[]/)[0]);
+      for (const n of names) if (fields[n]) fields[n].showError("Revisa este campo.");
+      showFormErr(e && e._msg ? e._msg : friendly(e));
+      formErr.scrollIntoView?.({ block: "nearest" });
+    } finally { submit.disabled = false; submit.textContent = old; }
+  });
+  return { el: form, fields, all, showFormErr };
+}
+
+let lastOpener = null;
+function openDialog(title, content) {
+  lastOpener = document.activeElement;
+  const dlg = h("dialog", { "aria-labelledby": "dlg-title" });
+  const body = h("div", { class: "dlg-body" }, h("h2", { id: "dlg-title", text: title }), content);
+  dlg.append(body);
+  document.body.append(dlg);
+  const close = () => { if (dlg.open) dlg.close(); };
+  dlg.addEventListener("close", () => { dlg.remove(); if (lastOpener && lastOpener.isConnected) lastOpener.focus(); });
+  dlg.showModal();
+  return close;
+}
+function confirmDialog(title, message, confirmLabel = "Confirmar", danger = true) {
+  return new Promise((resolve) => {
+    let done = false;
+    const fin = (v) => { if (!done) { done = true; resolve(v); close(); } };
+    const no = h("button", { class: "btn", type: "button", text: "Cancelar", onclick: () => fin(false) });
+    const yes = h("button", { class: "btn " + (danger ? "btn-danger solid" : "btn-primary"), type: "button", text: confirmLabel, onclick: () => fin(true) });
+    const content = h("div", {}, h("p", { text: message }), h("div", { class: "actions" }, no, yes));
+    const close = openDialog(title, content);
+    const dlg = $("dialog:last-of-type");
+    dlg.addEventListener("close", () => fin(false));
+    no.focus();
+  });
+}
+const alertBox = (kind, text) => h("div", { class: `alert alert-${kind}`, role: kind === "error" ? "alert" : "status", text });
+const pendingBox = (text) => h("div", { class: "pending", role: "note" }, h("strong", { text: "Pendiente en la API. " }), text);
+
+/* ==========================================================================
+   MODO DEMO — datos locales que reproducen la forma de las respuestas reales
+   de /admin/* (paginación por cursor, baja lógica, reglas principales).
+   ========================================================================== */
+const demoDB = {};
+const demoKey = {
+  countries: (r) => r.code, cities: (r) => r.id, airports: (r) => r.code, airlines: (r) => r.code,
+  "aircraft-models": (r) => r.code, "fare-families": (r) => r.id, "seat-maps": (r) => r.id,
+  flights: (r) => r.flightNumber, departures: (r) => r.id, fares: (r) => r.id,
+};
+function demoProblem(status, detail, invalidParams) {
+  const titles = { 400: "Bad Request", 404: "Not Found", 409: "Conflict", 422: "Unprocessable Entity" };
+  return new ApiError(status, { title: titles[status], status, detail, code: "VALIDATION_FAILED", invalidParams });
+}
+function demoSeed() {
+  const u = () => crypto.randomUUID();
+  const d = demoDB;
+  d.countries = [
+    { code: "EC", iso3: "ECU", name: "Ecuador", active: true }, { code: "CO", iso3: "COL", name: "Colombia", active: true },
+    { code: "PE", iso3: "PER", name: "Perú", active: true }, { code: "US", iso3: "USA", name: "Estados Unidos", active: true },
+    { code: "ES", iso3: "ESP", name: "España", active: true },
+  ];
+  const city = (country, name, tz) => ({ id: u(), country, name, timeZone: tz, active: true });
+  d.cities = [
+    city("EC", "Quito", "America/Guayaquil"), city("EC", "Guayaquil", "America/Guayaquil"), city("EC", "Cuenca", "America/Guayaquil"),
+    city("CO", "Bogotá", "America/Bogota"), city("PE", "Lima", "America/Lima"), city("US", "Miami", "America/New_York"), city("ES", "Madrid", "Europe/Madrid"),
+  ];
+  const cid = (n) => d.cities.find((c) => c.name === n).id;
+  d.airports = [
+    ["UIO", "Aeropuerto Internacional Mariscal Sucre", "Quito"], ["GYE", "Aeropuerto José Joaquín de Olmedo", "Guayaquil"],
+    ["CUE", "Aeropuerto Mariscal Lamar", "Cuenca"], ["BOG", "Aeropuerto El Dorado", "Bogotá"], ["LIM", "Aeropuerto Jorge Chávez", "Lima"],
+    ["MIA", "Aeropuerto Internacional de Miami", "Miami"], ["MAD", "Aeropuerto Adolfo Suárez Madrid-Barajas", "Madrid"],
+  ].map(([code, name, c]) => ({ code, name, cityId: cid(c), active: true }));
+  d.airlines = [
+    { code: "AV", name: "Avianca", ticketPrefix: "134", active: true }, { code: "LA", name: "LATAM Airlines", ticketPrefix: "045", active: true },
+    { code: "UX", name: "Air Europa", ticketPrefix: "996", active: true },
+  ];
+  d["aircraft-models"] = [
+    { code: "320", name: "Airbus A320", active: true }, { code: "319", name: "Airbus A319", active: true },
+    { code: "AT7", name: "ATR 72", active: true }, { code: "738", name: "Boeing 737-800", active: true },
+  ];
+  const fam = (airline, cabinClass, code, name, changeable, pen, pi, co, cb, mx) => ({
+    id: u(), airline, cabinClass, code, name, changeable, cancellationPenaltyPercent: pen, refundable: pen !== "100.00",
+    personalItemIncluded: pi, carryOnBagsIncluded: co, checkedBagsIncluded: cb, maxExtraBags: mx, active: true,
+  });
+  d["fare-families"] = [
+    fam("AV", "ECONOMY", "BASIC", "Economy Basic", false, "100.00", true, 0, 0, 2), fam("AV", "ECONOMY", "CLASSIC", "Economy Classic", true, "30.00", true, 1, 1, 3),
+    fam("AV", "ECONOMY", "FLEX", "Economy Flex", true, "0.00", true, 1, 2, 4), fam("AV", "BUSINESS", "BUS_FLEX", "Business Flex", true, "0.00", true, 2, 2, 5),
+    fam("LA", "ECONOMY", "LIGHT", "Economy Light", false, "100.00", true, 1, 0, 2), fam("LA", "ECONOMY", "PLUS", "Economy Plus", true, "25.00", true, 1, 1, 3),
+    fam("LA", "PREMIUM_ECONOMY", "PREM", "Premium Economy", true, "10.00", true, 2, 2, 4),
+  ];
+  const map = (airline, aircraftModel, name, cabins) => ({ id: u(), airline, aircraftModel, name, cabins, active: true });
+  d["seat-maps"] = [
+    map("AV", "320", "Avianca A320 · 2 cabinas", [{ cabinClass: "ECONOMY", seats: 150 }, { cabinClass: "BUSINESS", seats: 12 }]),
+    map("AV", "319", "Avianca A319 · Economy", [{ cabinClass: "ECONOMY", seats: 120 }]),
+    map("AV", "AT7", "Avianca ATR 72 · Economy", [{ cabinClass: "ECONOMY", seats: 70 }]),
+    map("LA", "320", "LATAM A320 · 2 cabinas", [{ cabinClass: "ECONOMY", seats: 168 }, { cabinClass: "PREMIUM_ECONOMY", seats: 12 }]),
+    map("LA", "738", "LATAM 737-800 · Economy", [{ cabinClass: "ECONOMY", seats: 160 }]),
+  ];
+  d.flights = [
+    { flightNumber: "AV1500", marketingCarrier: "AV", operatingCarrier: "AV", origin: "UIO", destination: "GYE", active: true },
+    { flightNumber: "AV1502", marketingCarrier: "AV", operatingCarrier: "AV", origin: "UIO", destination: "BOG", active: true },
+    { flightNumber: "LA1420", marketingCarrier: "LA", operatingCarrier: "LA", origin: "GYE", destination: "LIM", active: true },
+  ];
+  d.departures = []; d.fares = [];
+  const base = new Date(); base.setUTCHours(13, 0, 0, 0);
+  const mkDep = (fn, mapIdx, days, hour, durMin) => {
+    const sm = d["seat-maps"][mapIdx];
+    const dep = new Date(base.getTime() + days * 86400000 + (hour - 13) * 3600000);
+    const f = d.flights.find((x) => x.flightNumber === fn);
+    const row = {
+      id: u(), flightNumber: fn, origin: f.origin, destination: f.destination,
+      departureDate: new Date(dep.getTime() - 5 * 3600000).toISOString().slice(0, 10),
+      scheduledDeparture: dep.toISOString().replace(".000Z", "Z"), scheduledArrival: new Date(dep.getTime() + durMin * 60000).toISOString().replace(".000Z", "Z"),
+      estimatedDeparture: null, estimatedArrival: null, actualDeparture: null, actualArrival: null,
+      departureTerminal: null, arrivalTerminal: null, status: "SCHEDULED", seatMapId: sm.id, aircraftModel: sm.aircraftModel,
+      cabins: sm.cabins.map((c) => ({ cabinClass: c.cabinClass, totalSeats: c.seats, availableSeats: c.seats })), active: true,
+    };
+    d.departures.push(row);
+    return row;
+  };
+  const dep1 = mkDep("AV1500", 0, 5, 13, 55), dep2 = mkDep("AV1500", 0, 6, 13, 55), dep3 = mkDep("AV1502", 1, 7, 15, 80), dep4 = mkDep("LA1420", 3, 8, 17, 110);
+  const fareFor = (dep, famCode, adult, taxes) => {
+    const fm = d["fare-families"].find((x) => x.code === famCode);
+    const money = (n) => n.toFixed(2);
+    d.fares.push({
+      id: u(), departureId: dep.id, flightNumber: dep.flightNumber, fareFamilyId: fm.id, fareBrand: fm.code, cabinClass: fm.cabinClass, currency: "USD",
+      extraBagPrice: "35.00", changeFee: "50.00",
+      prices: [{ passengerType: "ADULT", baseFare: money(adult), taxes: money(taxes), total: money(adult + taxes) }], active: true,
+    });
+  };
+  fareFor(dep1, "BASIC", 61.6, 12.32); fareFor(dep1, "CLASSIC", 78.0, 15.6); fareFor(dep2, "BASIC", 64.0, 12.8);
+  fareFor(dep3, "CLASSIC", 120.0, 24.0); fareFor(dep4, "PLUS", 140.0, 28.0);
+}
+function demoOut(ent, r) {
+  const d = demoDB;
+  if (ent === "airports") {
+    const c = d.cities.find((x) => x.id === r.cityId);
+    return { code: r.code, name: r.name, cityId: r.cityId, cityName: c ? c.name : "—", country: c ? c.country : "—", active: r.active };
+  }
+  if (ent === "departures") return { ...r, cabins: r.cabins.map((c) => ({ ...c })) };
+  return { ...r };
+}
+const demoFilters = {
+  airports: (r, q) => (!q.cityId || r.cityId === q.cityId) && (!q.country || (demoDB.cities.find((c) => c.id === r.cityId) || {}).country === q.country),
+  cities: (r, q) => !q.country || r.country === q.country,
+  "fare-families": (r, q) => (!q.airline || r.airline === q.airline) && (!q.cabinClass || r.cabinClass === q.cabinClass),
+  "seat-maps": (r, q) => (!q.airline || r.airline === q.airline) && (!q.aircraftModel || r.aircraftModel === q.aircraftModel),
+  flights: (r, q) => (!q.airline || r.marketingCarrier === q.airline) && (!q.origin || r.origin === q.origin) && (!q.destination || r.destination === q.destination),
+  departures: (r, q) => (!q.flightNumber || r.flightNumber === q.flightNumber) && (!q.dateFrom || r.departureDate >= q.dateFrom) &&
+    (!q.dateTo || r.departureDate <= q.dateTo) && (!q.status || r.status === q.status),
+  fares: (r, q) => (!q.departureId || r.departureId === q.departureId) && (!q.fareFamilyId || r.fareFamilyId === q.fareFamilyId),
+};
+function demoLatency() { return new Promise((r) => setTimeout(r, 120)); }
+function demoCabinMap(sm) { return new Map(sm.cabins.map((c) => [c.cabinClass, c.seats])); }
+
+async function demoRequest(method, path, { body, query } = {}) {
+  await demoLatency();
+  if (!demoDB.countries) demoSeed();
+  const d = demoDB;
+  if (path === "/auth/me") return { id: "demo", email: session.user?.email || "demo@quinde.example", roles: ["administrador"], scopes: ["flights:admin"], createdAt: new Date().toISOString() };
+  if (path === "/auth/logout") return null;
+  if (path === "/admin/users") {
+    d.users = d.users || [{ id: crypto.randomUUID(), email: session.user?.email || "demo@quinde.example", roles: ["administrador"], createdAt: new Date().toISOString() }];
+    if (method === "GET") return { items: d.users.map((u) => ({ ...u })) };
+    if (method === "POST") {
+      const email = String(body.email || "").toLowerCase();
+      if (d.users.some((u) => u.email === email)) throw demoProblem(409, "A user with that email already exists");
+      const row = { id: crypto.randomUUID(), email, roles: ["administrador"], createdAt: new Date().toISOString() };
+      d.users.push(row);
+      return { ...row };
+    }
+  }
+  const m = /^\/admin\/([a-z-]+)(?:\/([^/]+))?(?:\/(reactivate))?$/.exec(path);
+  if (!m || !demoKey[m[1]]) throw new ApiError(404, { detail: "Not found" });
+  const [, ent, id, react] = m;
+  const key = demoKey[ent];
+  const rows = d[ent];
+  const find = (k) => rows.find((r) => key(r) === k);
+
+  if (method === "GET" && !id) {
+    const q = query || {};
+    const limit = Math.min(Math.max(parseInt(q.limit || "10", 10) || 10, 1), 50);
+    let list = rows.filter((r) => (q.includeInactive === true || q.includeInactive === "true" || r.active) && (demoFilters[ent] ? demoFilters[ent](r, q) : true));
+    list = list.slice().sort((a, b) => ent === "departures" ? a.scheduledDeparture.localeCompare(b.scheduledDeparture) || key(a).localeCompare(key(b)) : key(a).localeCompare(key(b)));
+    let start = 0;
+    if (q.cursor) {
+      let k = null;
+      try { k = atob(q.cursor.replace(/-/g, "+").replace(/_/g, "/")); } catch (_) {}
+      const i = list.findIndex((r) => key(r) === k);
+      if (i < 0) throw demoProblem(400, "cursor is not valid", [{ name: "cursor", reason: "invalid" }]);
+      start = i + 1;
+    }
+    const page = list.slice(start, start + limit);
+    const out = { items: page.map((r) => demoOut(ent, r)) };
+    if (start + limit < list.length) out.nextCursor = btoa(key(page[page.length - 1])).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    return out;
+  }
+  if (method === "GET") {
+    const r = find(id);
+    if (!r) throw demoProblem(404, `${ent} ${id} not found`);
+    return demoOut(ent, r);
+  }
+  if (method === "POST" && !id) return demoOut(ent, demoCreate(ent, body || {}));
+  const row = find(id);
+  if (!row) throw demoProblem(404, `${ent} ${id} not found`);
+  if (method === "PATCH") { demoPatch(ent, row, body || {}); return demoOut(ent, row); }
+  if (method === "DELETE") { demoDeactivate(ent, row); return null; }
+  if (method === "POST" && react) {
+    if (!row.active) {
+      if (ent === "departures" && new Date(row.scheduledDeparture) < new Date()) throw demoProblem(409, "scheduled in the past");
+      row.active = true; if (ent === "departures") row.status = "SCHEDULED";
+    }
+    return demoOut(ent, row);
+  }
+  throw new ApiError(404, {});
+}
+function demoCreate(ent, b) {
+  const d = demoDB, key = demoKey[ent];
+  const u = () => crypto.randomUUID();
+  const activeOf = (list, k, v) => list.find((x) => x[k] === v && x.active);
+  let row;
+  if (ent === "countries") row = { code: b.code, iso3: b.iso3, name: b.name, active: true };
+  else if (ent === "cities") {
+    if (!activeOf(d.countries, "code", b.country)) throw demoProblem(422, `Country ${b.country} does not exist or is inactive`, [{ name: "country", reason: "invalid" }]);
+    row = { id: u(), country: b.country, name: b.name, timeZone: b.timeZone || "America/Guayaquil", active: true };
+  } else if (ent === "airports") {
+    if (!d.cities.find((c) => c.id === b.cityId && c.active)) throw demoProblem(422, "City does not exist or is inactive", [{ name: "cityId", reason: "invalid" }]);
+    row = { code: b.code, name: b.name, cityId: b.cityId, active: true };
+  } else if (ent === "airlines") row = { code: b.code, name: b.name, ticketPrefix: b.ticketPrefix || null, active: true };
+  else if (ent === "aircraft-models") row = { code: b.code, name: b.name, active: true };
+  else if (ent === "fare-families") {
+    if (!activeOf(d.airlines, "code", b.airline)) throw demoProblem(422, `Airline ${b.airline} does not exist or is inactive`, [{ name: "airline", reason: "invalid" }]);
+    const pen = b.cancellationPenaltyPercent ?? "0.00";
+    row = {
+      id: u(), airline: b.airline, cabinClass: b.cabinClass, code: b.code, name: b.name, changeable: !!b.changeable,
+      cancellationPenaltyPercent: Number(pen).toFixed(2), refundable: Number(pen) < 100, personalItemIncluded: b.personalItemIncluded ?? true,
+      carryOnBagsIncluded: b.carryOnBagsIncluded ?? 1, checkedBagsIncluded: b.checkedBagsIncluded ?? 0, maxExtraBags: b.maxExtraBags ?? 2, active: true,
+    };
+    if (d["fare-families"].some((x) => x.airline === row.airline && x.code === row.code)) throw demoProblem(409, "Fare family already exists");
+  } else if (ent === "seat-maps") throw demoProblem(400, "not supported in demo");
+  else if (ent === "flights") {
+    if (b.origin === b.destination) throw demoProblem(400, "destination must be different from origin", [{ name: "destination", reason: "same" }]);
+    for (const [f, list, k] of [["marketingCarrier", d.airlines, "code"], ["origin", d.airports, "code"], ["destination", d.airports, "code"]])
+      if (!activeOf(list, k, b[f])) throw demoProblem(422, `${f} ${b[f]} does not exist or is inactive`, [{ name: f, reason: "invalid" }]);
+    row = { flightNumber: b.marketingCarrier + b.number, marketingCarrier: b.marketingCarrier, operatingCarrier: b.operatingCarrier || b.marketingCarrier, origin: b.origin, destination: b.destination, active: true };
+  } else if (ent === "departures") {
+    const dep = new Date(b.scheduledDeparture), arr = new Date(b.scheduledArrival);
+    if (!(arr > dep)) throw demoProblem(400, "scheduledArrival must be after scheduledDeparture", [{ name: "scheduledArrival", reason: "order" }]);
+    if (dep <= new Date()) throw demoProblem(422, "The departure must be in the future", [{ name: "scheduledDeparture", reason: "past" }]);
+    const f = activeOf(d.flights, "flightNumber", b.flightNumber);
+    if (!f) throw demoProblem(422, `Flight ${b.flightNumber} does not exist or is inactive`, [{ name: "flightNumber", reason: "invalid" }]);
+    const sm = d["seat-maps"].find((x) => x.id === b.seatMapId && x.active);
+    if (!sm) throw demoProblem(422, "Seat map does not exist or is inactive", [{ name: "seatMapId", reason: "invalid" }]);
+    if (sm.airline !== f.operatingCarrier) throw demoProblem(422, "The seat map belongs to airline X", [{ name: "seatMapId", reason: "airline" }]);
+    const phys = demoCabinMap(sm);
+    const cabins = (b.cabins && b.cabins.length ? b.cabins : sm.cabins.map((c) => ({ cabinClass: c.cabinClass, totalSeats: c.seats })));
+    const seen = new Set();
+    cabins.forEach((c, i) => {
+      if (seen.has(c.cabinClass)) throw demoProblem(400, "repeated", [{ name: `cabins[${i}].cabinClass`, reason: "dup" }]);
+      seen.add(c.cabinClass);
+      if (!phys.has(c.cabinClass)) throw demoProblem(422, "The seat map has no such cabin", [{ name: `cabins[${i}].cabinClass`, reason: "x" }]);
+      if (c.totalSeats > phys.get(c.cabinClass)) throw demoProblem(422, "quota cannot exceed seats", [{ name: `cabins[${i}].totalSeats`, reason: "x" }]);
+    });
+    row = {
+      id: u(), flightNumber: f.flightNumber, origin: f.origin, destination: f.destination,
+      departureDate: new Date(dep.getTime() - 5 * 3600000).toISOString().slice(0, 10), scheduledDeparture: b.scheduledDeparture, scheduledArrival: b.scheduledArrival,
+      estimatedDeparture: null, estimatedArrival: null, actualDeparture: null, actualArrival: null,
+      departureTerminal: b.departureTerminal ?? null, arrivalTerminal: b.arrivalTerminal ?? null, status: "SCHEDULED", seatMapId: sm.id, aircraftModel: sm.aircraftModel,
+      cabins: cabins.map((c) => ({ cabinClass: c.cabinClass, totalSeats: c.totalSeats, availableSeats: c.totalSeats })), active: true,
+    };
+  } else if (ent === "fares") {
+    const dep = d.departures.find((x) => x.id === b.departureId && x.active);
+    if (!dep) throw demoProblem(422, "Departure does not exist or is no longer on sale", [{ name: "departureId", reason: "x" }]);
+    const fm = d["fare-families"].find((x) => x.id === b.fareFamilyId && x.active);
+    if (!fm) throw demoProblem(422, "Fare family does not exist or is inactive", [{ name: "fareFamilyId", reason: "x" }]);
+    const fl = d.flights.find((x) => x.flightNumber === dep.flightNumber);
+    if (fm.airline !== fl.marketingCarrier) throw demoProblem(422, "The fare family belongs to airline X", [{ name: "fareFamilyId", reason: "x" }]);
+    if (!dep.cabins.some((c) => c.cabinClass === fm.cabinClass)) throw demoProblem(422, "The departure has no such cabin", [{ name: "fareFamilyId", reason: "x" }]);
+    if (d.fares.some((x) => x.departureId === dep.id && x.fareFamilyId === fm.id)) throw demoProblem(409, "Fare already exists for that departure and family");
+    if (!(b.prices || []).some((p) => p.passengerType === "ADULT")) throw demoProblem(400, "prices must include the ADULT price", [{ name: "prices", reason: "x" }]);
+    row = {
+      id: u(), departureId: dep.id, flightNumber: dep.flightNumber, fareFamilyId: fm.id, fareBrand: fm.code, cabinClass: fm.cabinClass, currency: b.currency,
+      extraBagPrice: b.extraBagPrice, changeFee: b.changeFee || "0.00",
+      prices: b.prices.map((p) => ({ ...p, total: (Number(p.baseFare) + Number(p.taxes)).toFixed(2) })), active: true,
+    };
+  }
+  if (d[ent].some((x) => key(x) === key(row))) throw demoProblem(409, "already exists");
+  d[ent].push(row);
+  return row;
+}
+function demoPatch(ent, row, b) {
+  const d = demoDB;
+  const allowed = {
+    countries: ["name"], cities: ["name", "timeZone"], airports: ["name", "cityId"], airlines: ["name", "ticketPrefix"], "aircraft-models": ["name"],
+    "fare-families": ["name", "changeable", "cancellationPenaltyPercent", "personalItemIncluded", "carryOnBagsIncluded", "checkedBagsIncluded", "maxExtraBags"],
+    "seat-maps": ["name"], flights: ["operatingCarrier"],
+    departures: ["scheduledDeparture", "scheduledArrival", "estimatedDeparture", "estimatedArrival", "actualDeparture", "actualArrival", "departureTerminal", "arrivalTerminal", "status", "cabins"],
+    fares: ["extraBagPrice", "changeFee", "prices"],
+  }[ent];
+  for (const k of Object.keys(b)) if (!allowed.includes(k)) throw demoProblem(400, `${k} is not allowed`, [{ name: k, reason: "x" }]);
+  if (ent === "airports" && b.cityId && !d.cities.find((c) => c.id === b.cityId && c.active)) throw demoProblem(422, "City does not exist or is inactive", [{ name: "cityId", reason: "x" }]);
+  if (ent === "departures") {
+    const dep = new Date(b.scheduledDeparture || row.scheduledDeparture), arr = new Date(b.scheduledArrival || row.scheduledArrival);
+    if (!(arr > dep)) throw demoProblem(400, "scheduledArrival must be after scheduledDeparture", [{ name: "scheduledArrival", reason: "x" }]);
+    if (b.scheduledDeparture) row.departureDate = new Date(dep.getTime() - 5 * 3600000).toISOString().slice(0, 10);
+  }
+  if (ent === "fare-families" && b.cancellationPenaltyPercent !== undefined) {
+    b = { ...b, cancellationPenaltyPercent: Number(b.cancellationPenaltyPercent).toFixed(2) };
+    row.refundable = Number(b.cancellationPenaltyPercent) < 100;
+  }
+  if (ent === "fares" && b.prices) b = { ...b, prices: b.prices.map((p) => ({ ...p, total: (Number(p.baseFare) + Number(p.taxes)).toFixed(2) })) };
+  Object.assign(row, b);
+}
+function demoDeactivate(ent, row) {
+  const d = demoDB;
+  if (!row.active) return;
+  const uses = [];
+  if (ent === "airports") d.flights.filter((f) => f.active && (f.origin === row.code || f.destination === row.code)).length && uses.push("active flights");
+  if (ent === "airlines") d.flights.filter((f) => f.active && f.marketingCarrier === row.code).length && uses.push("active flights");
+  if (ent === "flights") d.departures.filter((x) => x.active && x.flightNumber === row.flightNumber).length && uses.push("active departures");
+  if (ent === "fare-families") d.fares.filter((x) => x.active && x.fareFamilyId === row.id).length && uses.push("active fares");
+  if (ent === "seat-maps") d.departures.filter((x) => x.active && x.seatMapId === row.id).length && uses.push("active departures");
+  if (ent === "cities") d.airports.filter((x) => x.active && x.cityId === row.id).length && uses.push("active airports");
+  if (ent === "countries") d.cities.filter((x) => x.active && x.country === row.code).length && uses.push("active cities");
+  if (uses.length) throw demoProblem(409, `${ent} is still used by ${uses.join(", ")}`);
+  row.active = false;
+  if (ent === "departures") { if (new Date(row.scheduledDeparture) < new Date()) throw demoProblem(409, "already departed"); row.status = "CANCELLED"; }
+}
+/* ==========================================================================
+   Aplicación: login, estructura (shell), router
+   ========================================================================== */
+const root = $("#root");
+const NAV = [
+  { group: "General", items: [
+    { id: "panel", label: "Panel", hash: "#/panel" },
+    { id: "crear-vuelo", label: "Crear vuelo", hash: "#/crear-vuelo" },
+  ] },
+  { group: "Operación", items: [
+    { id: "lista/departures", label: "Vuelos (salidas)", hash: "#/lista/departures" },
+    { id: "lista/flights", label: "Rutas y números", hash: "#/lista/flights" },
+    { id: "lista/fares", label: "Tarifas", hash: "#/lista/fares" },
+    { id: "reservas", label: "Reservas", hash: "#/reservas", tag: "Pendiente" },
+  ] },
+  { group: "Catálogo", items: [
+    { id: "lista/airports", label: "Aeropuertos", hash: "#/lista/airports" },
+    { id: "lista/airlines", label: "Aerolíneas", hash: "#/lista/airlines" },
+    { id: "lista/aircraft-models", label: "Equipos (aeronaves)", hash: "#/lista/aircraft-models" },
+    { id: "lista/fare-families", label: "Familias tarifarias", hash: "#/lista/fare-families" },
+    { id: "lista/seat-maps", label: "Mapas de asientos", hash: "#/lista/seat-maps" },
+    { id: "lista/cities", label: "Ciudades", hash: "#/lista/cities" },
+    { id: "lista/countries", label: "Países", hash: "#/lista/countries" },
+  ] },
+  { group: "Control", items: [
+    { id: "usuarios", label: "Administradores", hash: "#/usuarios" },
+    { id: "auditoria", label: "Auditoría", hash: "#/auditoria", tag: "Pendiente" },
+  ] },
+];
+const routes = {}; // id → (main, params) => void   (se registran más abajo)
+let mainEl = null, navEl = null;
+
+function setTitle(t) { document.title = `${t} · Backoffice de Vuelos`; }
+function pageHead(title, sub, ...actions) {
+  setTitle(title);
+  return h("div", { class: "page-head" },
+    h("div", {}, h("h1", { id: "h1", tabindex: "-1", text: title }), sub ? h("p", { text: sub, style: "color:var(--muted);margin:0" }) : null),
+    actions.length ? h("div", { class: "actions" }, actions) : null);
+}
+
+/* ---------- Login ---------- */
+function renderLogin(msg) {
+  clear(root);
+  mainEl = navEl = null;
+  const demoBox = h("input", { type: "checkbox", id: "demo-sw", role: "switch" });
+  const form = mkForm([
+    { name: "email", label: "Correo electrónico", type: "email", required: true, max: 254, autocomplete: "username", inputmode: "email",
+      pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, msg: "Escribe un correo válido, por ejemplo nombre@dominio.com." },
+    { name: "password", label: "Contraseña", type: "password", required: true, autocomplete: "current-password",
+      custom: (v) => (v.length < 12 || v.length > 128 ? "La contraseña tiene entre 12 y 128 caracteres." : "") },
+  ], {}, {
+    submitLabel: "Iniciar sesión",
+    onSubmit: async (v) => {
+      if (demoBox.checked) {
+        session.demo = true; session.user = { email: v.email, scopes: ["flights:admin"] };
+        enterApp();
+        return;
+      }
+      await login(v.email, v.password);
+      enterApp();
+    },
+  });
+  // En modo demo cualquier contraseña vale (no se envía a ningún lado): se relaja la longitud.
+  const pwField = form.fields.password;
+  const origValidate = pwField.validate;
+  pwField.validate = (all) => {
+    if (demoBox.checked) { const v = pwField.get(); const m = v ? "" : REQ_MSG; pwField.showError(m); return m; }
+    return origValidate(all);
+  };
+  const demoRow = h("div", { class: "field" },
+    h("div", { class: "check" }, demoBox, h("label", { for: "demo-sw", text: "Modo demo (datos de ejemplo locales, sin conectar con la API)" })),
+    h("span", { class: "hint", text: "Con el modo demo apagado se usa la API real con tu cuenta de administrador." }));
+  form.el.insertBefore(demoRow, form.el.querySelector(".actions"));
+  root.append(h("div", { class: "login-wrap" },
+    h("main", { id: "contenido", class: "login-card" },
+      h("h1", { id: "h1", tabindex: "-1", text: "Backoffice de Vuelos" }),
+      h("p", { text: "Ingresa con tu cuenta de administrador." }),
+      msg ? h("div", { class: "alert alert-warn", role: "alert", text: msg }) : null,
+      form.el,
+      h("p", { class: "hint", style: "color:var(--muted);font-size:.85rem;margin-top:1rem", text: `API: ${API_URL || "(sin configurar)"}` }))));
+  setTitle("Iniciar sesión");
+  $("input[name=email]").focus();
+}
+
+async function login(email, password) {
+  let tokens;
+  try { tokens = await rawFetch("POST", "/auth/login", { body: { email, password } }); }
+  catch (e) { throw e instanceof ApiError && e.status === 401 ? Object.assign(e, { _login: true }) : e; }
+  setTokens(tokens);
+  await loadProfile();
+}
+async function loadProfile() {
+  const me = await api("GET", "/auth/me");
+  if (!(me.scopes || []).includes("flights:admin")) {
+    // Cuenta válida pero sin permiso de administrador (el rol lo decide el servidor, nunca la interfaz)
+    try { await rawFetch("POST", "/auth/logout", { body: { refresh_token: session.refresh }, token: session.access }); } catch (_) {}
+    endSessionSilently();
+    throw new ApiError(403);
+  }
+  session.user = me;
+}
+function endSessionSilently() { session.access = null; session.refresh = null; session.user = null; saveRefresh(null); }
+
+async function logout() {
+  if (!session.demo && session.refresh) {
+    try { await rawFetch("POST", "/auth/logout", { body: { refresh_token: session.refresh }, token: session.access }); } catch (_) {}
+  }
+  invalidateCache();
+  endSession();
+}
+onSessionLost = (msg) => { invalidateCache(); renderLogin(msg); };
+
+/* ---------- Estructura ---------- */
+function enterApp() {
+  clear(root);
+  const demoBadge = session.demo ? h("span", { class: "demo-badge", text: "MODO DEMO" }) : null;
+  const top = h("header", { class: "topbar" },
+    h("span", { class: "brand", text: "✈ Backoffice de Vuelos" }),
+    h("div", { class: "who" }, demoBadge, h("span", { text: session.user?.email || "" }),
+      h("button", { class: "btn btn-sm", type: "button", text: "Cerrar sesión", onclick: logout })));
+  const banner = session.demo
+    ? h("div", { class: "demo-banner", role: "status" }, h("strong", { text: "Modo demo: " }),
+        "los datos son de ejemplo y viven solo en esta pestaña. No se envía nada a la API real.")
+    : null;
+  navEl = h("nav", { class: "sidebar", "aria-label": "Navegación principal" },
+    h("ul", {}, NAV.flatMap((g) => [
+      h("li", { class: "grp", "aria-hidden": "true", text: g.group }),
+      ...g.items.map((i) => h("li", {}, h("a", { href: i.hash, "data-nav": i.id }, i.label, i.tag ? h("span", { class: "tag", text: i.tag }) : null))),
+    ])));
+  mainEl = h("main", { id: "contenido", tabindex: "-1" });
+  root.append(h("div", { class: "app" }, top, banner, h("div", { class: "shell" }, navEl, mainEl)));
+  if (!location.hash || location.hash === "#") location.hash = "#/panel";
+  route();
+}
+
+function route() {
+  if (!mainEl) return;
+  const hash = location.hash.replace(/^#\/?/, "") || "panel";
+  const [path, qs] = hash.split("?");
+  const params = Object.fromEntries(new URLSearchParams(qs || ""));
+  let id = path, arg = null;
+  if (path.startsWith("lista/")) { id = "lista"; arg = path.slice(6); }
+  for (const a of navEl.querySelectorAll("a")) {
+    if (a.dataset.nav === path) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
+  }
+  clear(mainEl);
+  const fn = routes[id] || routes.panel;
+  try { fn(mainEl, arg, params); }
+  catch (e) { mainEl.append(alertBox("error", friendly(e))); }
+  const h1 = $("h1", mainEl);
+  if (h1) h1.focus({ preventScroll: false });
+  window.scrollTo(0, 0);
+}
+window.addEventListener("hashchange", route);
+
+/* ---------- Panel ---------- */
+const PANEL_ENTITIES = [
+  ["departures", "Vuelos (salidas)"], ["flights", "Rutas y números"], ["airports", "Aeropuertos"], ["airlines", "Aerolíneas"],
+  ["aircraft-models", "Equipos"], ["fare-families", "Familias tarifarias"], ["seat-maps", "Mapas de asientos"], ["fares", "Tarifas"],
+];
+routes.panel = (main) => {
+  main.append(pageHead("Panel", "Resumen del módulo de vuelos.", h("a", { class: "btn btn-primary", href: "#/crear-vuelo", text: "Crear un vuelo" })));
+  const grid = h("div", { class: "stats", role: "list" });
+  main.append(grid);
+  const cards = PANEL_ENTITIES.map(([ent, label]) => {
+    const num = h("b", { text: "…" });
+    const el = h("a", { class: "stat", role: "listitem", href: `#/lista/${ent}` }, num, h("span", { text: label }));
+    grid.append(el);
+    return { ent, num };
+  });
+  const err = h("div");
+  main.append(err);
+  Promise.allSettled(cards.map(async ({ ent, num }) => {
+    try {
+      const p = await api("GET", `/admin/${ent}`, { query: { limit: 50 } });
+      num.textContent = p.nextCursor ? "50+" : String(p.items.length);
+    } catch (e) {
+      num.textContent = "—";
+      throw e;
+    }
+  })).then((rs) => {
+    const bad = rs.find((r) => r.status === "rejected");
+    if (bad) err.append(alertBox("error", `No se pudieron cargar algunos conteos. ${friendly(bad.reason)}`));
+  });
+  main.append(h("h2", { text: "Pantallas pendientes en la API" }),
+    h("ul", { class: "linklist" }, h("li", {}, h("a", { href: "#/reservas", text: "Reservas" }), ": la API no tiene consulta de administración."),
+      h("li", {}, h("a", { href: "#/auditoria", text: "Auditoría" }), ": la API no expone la bitácora.")));
+  main.append(h("p", { style: "color:var(--muted)", text: "Los conteos muestran activos; \"50+\" significa que hay más de una página." }));
+};
+
+routes.reservas = (main) => {
+  main.append(pageHead("Reservas", "Consulta de reservas para administración."),
+    pendingBox("La API solo expone GET /bookings con las reservas del propio usuario autenticado (no hay un listado de reservas de todos los clientes para flights:admin). Esta pantalla se habilitará cuando exista un endpoint de administración."));
+};
+routes.auditoria = (main) => {
+  main.append(pageHead("Auditoría", "Bitácora de cambios (solo lectura)."),
+    pendingBox("La base registra la auditoría de cada escritura, pero la API no expone ningún endpoint para consultarla. Esta pantalla se habilitará cuando exista."));
+};
+
+
+/* ---------- Administradores: crear un usuario administrador ---------- */
+function usersMsg(e, list) {
+  if (e instanceof ApiError && (e.status === 404 || e.status === 405)) return `La API desplegada no tiene todavía el endpoint /admin/users para ${list ? "listar" : "crear"} administradores. Hay que agregarlo en el backend.`;
+  if (e instanceof ApiError && e.status === 409) return "Ya existe un usuario con ese correo.";
+  return friendly(e);
+}
+routes.usuarios = (main) => {
+  main.append(pageHead("Administradores", "Crea cuentas de administrador (acceso completo al backoffice)."));
+  const listBox = h("div");
+  const loadList = async () => {
+    try {
+      const { items } = await api("GET", "/admin/users");
+      clear(listBox).append(h("div", { class: "table-wrap" }, h("table", {}, h("caption", { text: `${items.length} administrador(es)` }),
+        h("thead", {}, h("tr", {}, ["Correo", "Rol", "Creado (Ecuador)"].map((t) => h("th", { scope: "col", text: t })))),
+        h("tbody", {}, items.map((u) => h("tr", {}, h("td", { text: u.email }), h("td", { text: "Administrador" }), h("td", { text: fmtEC(u.createdAt) })))))));
+    } catch (e) { clear(listBox).append(alertBox(e instanceof ApiError && (e.status === 404 || e.status === 405) ? "warn" : "error", usersMsg(e, true))); }
+  };
+  const ok = h("div", { role: "status", "aria-live": "polite" });
+  const form = mkForm([
+    { name: "email", label: "Correo electrónico", type: "email", required: true, max: 254, autocomplete: "off", inputmode: "email",
+      pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, msg: "Escribe un correo válido, por ejemplo nombre@dominio.com." },
+    { name: "password", label: "Contraseña", type: "password", required: true, autocomplete: "new-password", hint: "De 12 a 128 caracteres.",
+      custom: (v) => (v.length < 12 || v.length > 128 ? "La contraseña tiene entre 12 y 128 caracteres." : "") },
+    { name: "password2", label: "Repite la contraseña", type: "password", required: true, autocomplete: "new-password",
+      custom: (v, all) => (v !== all.password ? "Las contraseñas no coinciden." : "") },
+  ], {}, {
+    submitLabel: "Crear administrador",
+    onSubmit: async (v, f) => {
+      let u;
+      try { u = await api("POST", "/admin/users", { body: { email: v.email, password: v.password } }); }
+      catch (e) { if (e instanceof ApiError && [404, 405, 409].includes(e.status)) throw Object.assign(new Error(), { _msg: usersMsg(e) }); throw e; }
+      clear(ok).append(alertBox("ok", `Administrador ${u.email} creado.`));
+      for (const k of Object.keys(f)) { f[k].set(""); f[k].showError(""); }
+      await loadList();
+    },
+  });
+  form.fields.password.input.addEventListener("input", () => { if (form.fields.password2.get()) form.fields.password2.validate(form.all()); });
+  main.append(h("div", { class: "card", style: "max-width:520px" }, h("h2", { text: "Nuevo administrador", style: "margin-top:0" }), ok, form.el), listBox);
+  loadList();
+};
+
+/* ==========================================================================
+   Asistente: Crear vuelo
+   Llamadas reales: POST /admin/flights (si el número es nuevo),
+   POST /admin/departures (una por fecha) y POST /admin/fares (una por familia y fecha).
+   ========================================================================== */
+const MONEY_RE = /^\d{1,10}(\.\d{1,2})?$/;
+const MONEY_MSG = "Escribe un monto como 94.38 (hasta 2 decimales).";
+const CABIN_ES = { ECONOMY: "Económica", PREMIUM_ECONOMY: "Económica premium", BUSINESS: "Ejecutiva", FIRST: "Primera" };
+const WIZ_STEPS = ["Ruta", "Aerolínea y equipo", "Horario", "Cabinas y tarifas", "Revisar y confirmar"];
+const DAY_NAMES = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+let W = newWizardState();
+
+function newWizardState() {
+  return {
+    step: 0, maxStep: 0, origin: "", destination: "", airline: "", model: "", seatMapId: "", seatMaps: [],
+    flightMode: "new", existingFlight: "", number: "",
+    startDate: "", endDate: "", days: [true, true, true, true, true, true, true], depTime: "", arrTime: "", arrPlus: "0", depTerminal: "", arrTerminal: "",
+    cabins: {}, result: null, airports: [], flightsFound: [],
+  };
+}
+const optList = (items, val, lab, placeholder = "Selecciona…") => [{ value: "", label: placeholder }, ...items.map((x) => ({ value: val(x), label: lab(x) }))];
+function addDays(dateStr, n) {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
+}
+function weekday(dateStr) { const [y, m, d] = dateStr.split("-").map(Number); return new Date(Date.UTC(y, m - 1, d)).getUTCDay(); }
+function wizardDates() {
+  if (!W.startDate) return [];
+  const last = W.endDate && W.endDate >= W.startDate ? W.endDate : W.startDate;
+  const out = [];
+  for (let d = W.startDate; d <= last && out.length < 60; d = addDays(d, 1)) {
+    if (!W.endDate || W.days[weekday(d)]) out.push(d);
+  }
+  return out;
+}
+function validateFields(list, all) {
+  let first = null;
+  for (const f of list) if (f.validate(all) && !first) first = f;
+  if (first) first.input.focus();
+  return !first;
+}
+
+routes["crear-vuelo"] = (main) => {
+  if (W.result && W.result.done) W = newWizardState();
+  main.append(pageHead("Crear vuelo", "Asistente en 5 pasos. Las horas se escriben en hora de Ecuador (UTC−5); la API las guarda en UTC."));
+  const progress = h("ol", { class: "steps", "aria-label": "Progreso del asistente" });
+  const body = h("div", { class: "card" });
+  main.append(progress, body);
+  const live = h("div", { class: "sr-only", role: "status", "aria-live": "polite" });
+  main.append(live);
+
+  const renderProgress = () => {
+    clear(progress);
+    WIZ_STEPS.forEach((t, i) => progress.append(h("li", { class: i < W.step ? "done" : "", "aria-current": i === W.step ? "step" : null },
+      h("span", { class: "sr-only", text: i < W.step ? "Completado: " : i === W.step ? "Paso actual: " : "Pendiente: " }), t)));
+    live.textContent = `Paso ${W.step + 1} de ${WIZ_STEPS.length}: ${WIZ_STEPS[W.step]}`;
+  };
+
+  let current = null;
+  const go = async (dir) => {
+    if (dir > 0 && current) {
+      const ok = await current.validate();
+      if (!ok) return;
+      current.collect();
+    } else if (current) current.collect();
+    W.step = Math.max(0, Math.min(WIZ_STEPS.length - 1, W.step + dir));
+    show();
+  };
+  const show = async () => {
+    renderProgress();
+    clear(body);
+    body.append(h("h2", { text: `Paso ${W.step + 1}: ${WIZ_STEPS[W.step]}`, style: "margin-top:0" }));
+    const stepBox = h("div");
+    body.append(stepBox);
+    const builders = [stepRoute, stepAirline, stepSchedule, stepCabins, stepReview];
+    current = null;
+    try { current = await builders[W.step](stepBox, { go, refresh: show }); }
+    catch (e) { stepBox.append(alertBox("error", friendly(e))); }
+    if (W.step < WIZ_STEPS.length - 1) {
+      body.append(h("div", { class: "actions", style: "margin-top:1rem" },
+        W.step > 0 ? h("button", { class: "btn", type: "button", text: "Atrás", onclick: () => go(-1) }) : null,
+        h("button", { class: "btn btn-primary", type: "button", text: "Siguiente", onclick: () => go(1) })));
+    }
+    const h2 = $("h2", body); if (h2) { h2.setAttribute("tabindex", "-1"); h2.focus(); }
+  };
+  show();
+};
+
+/* ----- Paso 1: Ruta ----- */
+async function stepRoute(box) {
+  box.append(h("p", { text: "Elige el aeropuerto de origen y el de destino del catálogo." }));
+  const airports = await cached("airports", () => loadAll("/admin/airports"));
+  W.airports = airports;
+  const opts = optList(airports, (a) => a.code, (a) => `${a.code} — ${a.name} (${a.cityName})`);
+  const origin = mkField({ name: "origin", label: "Origen", type: "select", required: true, options: opts }, W.origin);
+  const dest = mkField({ name: "destination", label: "Destino", type: "select", required: true, options: opts,
+    custom: (v) => (v === origin.get() ? "El destino debe ser distinto del origen." : "") }, W.destination);
+  origin.input.addEventListener("change", () => { if (dest.get()) dest.validate(); });
+  box.append(h("div", { class: "grid2" }, origin.el, dest.el));
+  if (!airports.length) box.append(alertBox("warn", "No hay aeropuertos activos. Créalos primero en Catálogo → Aeropuertos."));
+  return {
+    validate: () => validateFields([origin, dest]),
+    collect: () => { if (W.origin !== origin.get() || W.destination !== dest.get()) { W.existingFlight = ""; W.flightsFound = []; } W.origin = origin.get(); W.destination = dest.get(); },
+  };
+}
+
+/* ----- Paso 2: Aerolínea, equipo, mapa de asientos y número de vuelo ----- */
+async function stepAirline(box) {
+  box.append(h("p", { text: "Elige la aerolínea y el equipo; después el mapa de asientos (define las cabinas) y el número de vuelo." }));
+  const [airlines, models] = await Promise.all([cached("airlines", () => loadAll("/admin/airlines")), cached("models", () => loadAll("/admin/aircraft-models"))]);
+  const airline = mkField({ name: "airline", label: "Aerolínea", type: "select", required: true, options: optList(airlines, (a) => a.code, (a) => `${a.code} — ${a.name}`) }, W.airline);
+  const model = mkField({ name: "model", label: "Equipo (aeronave)", type: "select", required: true, options: optList(models, (m) => m.code, (m) => `${m.name} (${m.code})`) }, W.model);
+  const seat = mkField({ name: "seatMapId", label: "Mapa de asientos", type: "select", required: true, options: [{ value: "", label: "Elige aerolínea y equipo primero" }],
+    hint: "Define las cabinas físicas del avión." }, W.seatMapId);
+  const seatNote = h("div");
+  box.append(h("div", { class: "grid2" }, airline.el, model.el), seat.el, seatNote);
+
+  const loadSeatMaps = async () => {
+    clear(seatNote);
+    if (!airline.get() || !model.get()) { seat.setOptions([{ value: "", label: "Elige aerolínea y equipo primero" }], false); return; }
+    seat.setOptions([{ value: "", label: "Cargando…" }], false);
+    try {
+      const maps = await loadAll("/admin/seat-maps", { airline: airline.get(), aircraftModel: model.get() });
+      W.seatMaps = maps;
+      seat.setOptions(optList(maps, (m) => m.id, (m) => `${m.name} — ${m.cabins.map((c) => `${CABIN_ES[c.cabinClass] || c.cabinClass} ${c.seats}`).join(" / ")}`), false);
+      if (maps.some((m) => m.id === W.seatMapId)) seat.set(W.seatMapId);
+      else if (maps.length === 1) seat.set(maps[0].id);
+      if (!maps.length) seatNote.append(alertBox("warn", "No hay un mapa de asientos activo para esa aerolínea y ese equipo. La creación de mapas todavía no está en este panel (se hace por la API)."));
+    } catch (e) { seat.setOptions([{ value: "", label: "No se pudo cargar" }], false); seatNote.append(alertBox("error", friendly(e))); }
+  };
+  airline.input.addEventListener("change", () => { W.seatMapId = ""; loadSeatMaps(); loadFlights(); });
+  model.input.addEventListener("change", () => { W.seatMapId = ""; loadSeatMaps(); });
+
+  // Número de vuelo: existente (misma aerolínea y ruta) o nuevo
+  const flightBox = h("fieldset", {}, h("legend", { text: "Número de vuelo" }));
+  const modeNew = h("input", { type: "radio", name: "fmode", id: "fm-new", value: "new" });
+  const modeEx = h("input", { type: "radio", name: "fmode", id: "fm-ex", value: "existing" });
+  const exSel = mkField({ name: "existingFlight", label: "Vuelo existente de esta ruta", type: "select", required: true, options: [{ value: "", label: "—" }] }, W.existingFlight);
+  const num = mkField({ name: "number", label: "Número nuevo (1 a 4 dígitos)", type: "number", required: true, max: 4, pattern: /^[1-9][0-9]{0,3}$/,
+    msg: "Escribe de 1 a 4 dígitos, sin ceros a la izquierda (ej. 1500).", hint: "Se une al código de la aerolínea: AV + 1500 = AV1500." }, W.number);
+  const exWrap = h("div", { style: "margin-left:2rem" }, exSel.el);
+  const newWrap = h("div", { style: "margin-left:2rem" }, num.el);
+  flightBox.append(h("div", { class: "check" }, modeNew, h("label", { for: "fm-new", text: "Crear un número de vuelo nuevo para esta ruta" })), newWrap,
+    h("div", { class: "check" }, modeEx, h("label", { for: "fm-ex", text: "Usar un vuelo que ya existe en esta ruta" })), exWrap);
+  box.append(flightBox);
+  const applyMode = () => {
+    const ex = modeEx.checked;
+    exWrap.style.display = ex ? "" : "none"; newWrap.style.display = ex ? "none" : "";
+  };
+  modeNew.checked = W.flightMode !== "existing"; modeEx.checked = W.flightMode === "existing";
+  modeNew.addEventListener("change", applyMode); modeEx.addEventListener("change", applyMode);
+  applyMode();
+  const loadFlights = async () => {
+    if (!airline.get()) return;
+    try {
+      const fl = await loadAll("/admin/flights", { airline: airline.get(), origin: W.origin, destination: W.destination });
+      W.flightsFound = fl;
+      exSel.setOptions(optList(fl, (f) => f.flightNumber, (f) => `${f.flightNumber} (${f.origin} → ${f.destination})`, fl.length ? "Selecciona…" : "No hay vuelos en esta ruta"), false);
+      if (fl.some((f) => f.flightNumber === W.existingFlight)) exSel.set(W.existingFlight);
+      if (!fl.length) { modeNew.checked = true; modeEx.checked = false; modeEx.disabled = true; applyMode(); } else modeEx.disabled = false;
+    } catch (e) { box.append(alertBox("error", friendly(e))); }
+  };
+  await Promise.all([loadSeatMaps(), loadFlights()]);
+
+  return {
+    async validate() {
+      const useEx = modeEx.checked;
+      const list = [airline, model, seat, useEx ? exSel : num];
+      if (!validateFields(list)) return false;
+      if (!useEx) {
+        const fn = airline.get() + num.get();
+        try {
+          const f = await api("GET", `/admin/flights/${fn}`);
+          num.showError(`El vuelo ${fn} ya existe${f.active ? "" : " (dado de baja)"} con la ruta ${f.origin} → ${f.destination}. Usa "un vuelo que ya existe" o elige otro número.`);
+          num.input.focus(); return false;
+        } catch (e) {
+          if (!(e instanceof ApiError && e.status === 404)) { box.prepend(alertBox("error", friendly(e))); return false; }
+        }
+      }
+      return true;
+    },
+    collect() {
+      W.airline = airline.get(); W.model = model.get(); W.seatMapId = seat.get();
+      W.flightMode = modeEx.checked ? "existing" : "new"; W.existingFlight = exSel.get(); W.number = num.get();
+    },
+  };
+}
+
+/* ----- Paso 3: Horario ----- */
+async function stepSchedule(box) {
+  box.append(h("p", { text: "Define el horario en hora de Ecuador. Para repetir el vuelo varios días, indica una fecha final y los días de la semana." }));
+  const startDate = mkField({ name: "startDate", label: "Primera fecha de salida", type: "date", required: true,
+    custom: (v) => (v < todayEC() ? "La fecha no puede estar en el pasado." : "") }, W.startDate);
+  const endDate = mkField({ name: "endDate", label: "Repetir hasta (opcional)", type: "date", hint: "Déjalo vacío para crear una sola salida.",
+    custom: (v, all) => (all.startDate && v < all.startDate ? "Debe ser igual o posterior a la primera fecha." : "") }, W.endDate);
+  const depTime = mkField({ name: "depTime", label: "Hora de salida", type: "time", required: true }, W.depTime);
+  const arrTime = mkField({ name: "arrTime", label: "Hora de llegada", type: "time", required: true,
+    custom: (v, all) => (all.arrPlus === "0" && all.depTime && v <= all.depTime ? "La llegada debe ser posterior a la salida. Si llega al día siguiente, elige \"+1 día\"." : "") }, W.arrTime);
+  const arrPlus = mkField({ name: "arrPlus", label: "Día de llegada", type: "select", options: [{ value: "0", label: "Mismo día" }, { value: "1", label: "+1 día" }, { value: "2", label: "+2 días" }] }, W.arrPlus);
+  const depT = mkField({ name: "depTerminal", label: "Terminal de salida (opcional)", max: 10 }, W.depTerminal);
+  const arrT = mkField({ name: "arrTerminal", label: "Terminal de llegada (opcional)", max: 10 }, W.arrTerminal);
+  const fs = { startDate, endDate, depTime, arrTime, arrPlus, depTerminal: depT, arrTerminal: arrT };
+  const all = () => Object.fromEntries(Object.entries(fs).map(([k, f]) => [k, f.get()]));
+  Object.values(fs).forEach((f) => (f.all = all));
+  startDate.input.min = todayEC();
+
+  const daysBox = h("fieldset", {}, h("legend", { text: "Días de la semana en que opera" }));
+  const dayInputs = DAY_NAMES.map((n, i) => {
+    const c = h("input", { type: "checkbox", id: `day-${i}`, checked: W.days[i] });
+    daysBox.append(h("div", { class: "check", style: "display:inline-flex;margin-right:1rem" }, c, h("label", { for: `day-${i}`, text: n })));
+    return c;
+  });
+  const preview = h("div", { class: "alert alert-info", role: "status", "aria-live": "polite" });
+  box.append(h("div", { class: "grid2" }, startDate.el, endDate.el), daysBox, h("div", { class: "grid2" }, depTime.el, arrTime.el, arrPlus.el), h("div", { class: "grid2" }, depT.el, arrT.el), preview);
+  const syncDays = () => { daysBox.style.display = endDate.get() ? "" : "none"; };
+  const updatePreview = () => {
+    const snap = () => { W.startDate = startDate.get(); W.endDate = endDate.get(); W.days = dayInputs.map((c) => c.checked); };
+    snap(); syncDays();
+    const ds = wizardDates();
+    if (!ds.length) { preview.textContent = "Elige la fecha y la hora para ver cuántas salidas se crearán."; return; }
+    const t = depTime.get() && arrTime.get() ? ` · salida ${depTime.get()} → llegada ${arrTime.get()}${arrPlus.get() !== "0" ? " (+" + arrPlus.get() + ")" : ""}` : "";
+    preview.textContent = `Se crearán ${ds.length} salida${ds.length === 1 ? "" : "s"}: ${ds.length > 6 ? ds.slice(0, 3).join(", ") + " … " + ds.slice(-1) : ds.join(", ")}${t} (hora de Ecuador).`;
+  };
+  [startDate, endDate, depTime, arrTime, arrPlus].forEach((f) => f.input.addEventListener("input", updatePreview));
+  [startDate, endDate, depTime, arrTime, arrPlus].forEach((f) => f.input.addEventListener("change", updatePreview));
+  dayInputs.forEach((c) => c.addEventListener("change", updatePreview));
+  updatePreview();
+
+  return {
+    validate() {
+      if (!validateFields(Object.values(fs), all())) return false;
+      W.startDate = startDate.get(); W.endDate = endDate.get(); W.days = dayInputs.map((c) => c.checked);
+      const ds = wizardDates();
+      if (!ds.length) { daysBox.prepend(alertBox("error", "Ningún día de la semana coincide con el rango. Marca al menos un día válido.")); return false; }
+      if (ds.length > 31) { endDate.showError("Máximo 31 salidas por vez. Acorta el rango."); endDate.input.focus(); return false; }
+      const first = ecToUtcIso(ds[0], depTime.get());
+      if (new Date(first) <= new Date()) { depTime.showError("La primera salida debe ser en el futuro."); depTime.input.focus(); return false; }
+      return true;
+    },
+    collect() {
+      W.startDate = startDate.get(); W.endDate = endDate.get(); W.days = dayInputs.map((c) => c.checked);
+      W.depTime = depTime.get(); W.arrTime = arrTime.get(); W.arrPlus = arrPlus.get(); W.depTerminal = depT.get(); W.arrTerminal = arrT.get();
+    },
+  };
+}
+
+/* ----- Paso 4: Cabinas, inventario y familias tarifarias ----- */
+async function stepCabins(box) {
+  const sm = W.seatMaps.find((m) => m.id === W.seatMapId);
+  if (!sm) { box.append(alertBox("error", "Vuelve al paso 2 y elige un mapa de asientos.")); return { validate: () => false, collect() {} }; }
+  box.append(h("p", { text: "Para cada cabina indica el cupo a vender y las familias tarifarias con su precio. Los montos son texto con 2 decimales. Debes vender al menos una familia en una cabina." }));
+  const fams = await cached("fam:" + W.airline, () => loadAll("/admin/fare-families", { airline: W.airline }));
+  const currency = mkField({ name: "currency", label: "Moneda (ISO 4217)", required: true, max: 3, upper: true, pattern: /^[A-Z]{3}$/, msg: "Usa 3 letras mayúsculas, por ejemplo USD." }, W.currency || "USD");
+  box.append(h("div", { class: "grid2" }, currency.el));
+  const allFields = [];
+  const model = [];
+  for (const cab of sm.cabins) {
+    const saved = W.cabins[cab.cabinClass] || {};
+    const on = h("input", { type: "checkbox", id: nextId("cab"), checked: saved.on !== undefined ? saved.on : true });
+    const seats = mkField({ name: "seats-" + cab.cabinClass, label: `Cupo a vender (máximo ${cab.seats})`, type: "number", required: true, min: 1, maxVal: cab.seats, max: 3 }, saved.seats || String(cab.seats));
+    const cabFs = h("fieldset", {}, h("legend", { text: `${CABIN_ES[cab.cabinClass] || cab.cabinClass} · ${cab.seats} asientos` }));
+    const inner = h("div");
+    cabFs.append(h("div", { class: "check" }, on, h("label", { for: on.id, text: "Vender esta cabina en el vuelo" })), inner);
+    inner.append(seats.el);
+    const famRows = [];
+    const cabFams = fams.filter((f) => f.cabinClass === cab.cabinClass);
+    if (!cabFams.length) inner.append(alertBox("warn", "No hay familias tarifarias activas para esta cabina en esta aerolínea. Créalas en Catálogo → Familias tarifarias; sin ellas la cabina no tendrá precio."));
+    for (const fam of cabFams) {
+      const sv = (saved.fams || {})[fam.id] || {};
+      const fon = h("input", { type: "checkbox", id: nextId("fam"), checked: !!sv.on });
+      const money = (name, label, req, val) => mkField({ name, label, required: req, pattern: MONEY_RE, msg: MONEY_MSG, max: 13, inputmode: "decimal" }, val);
+      const f = {
+        fam, on: fon,
+        adultB: money("adultB", "Adulto · tarifa base", true, sv.adultB), adultT: money("adultT", "Adulto · impuestos", true, sv.adultT),
+        childB: money("childB", "Niño · tarifa base (opcional)", false, sv.childB), childT: money("childT", "Niño · impuestos", false, sv.childT),
+        infB: money("infB", "Infante · tarifa base (opcional)", false, sv.infB), infT: money("infT", "Infante · impuestos", false, sv.infT),
+        bag: money("bag", "Precio de maleta extra", true, sv.bag !== undefined ? sv.bag : "35.00"), fee: money("fee", "Cargo por cambio (opcional)", false, sv.fee),
+      };
+      // Niño e infante: ambos montos o ninguno
+      f.childT.spec.custom = (v) => (f.childB.get() && !v ? "Falta el monto de impuestos." : "");
+      f.childB.spec.custom = (v) => (f.childT.get() && !v ? "Falta la tarifa base." : "");
+      f.infT.spec.custom = (v) => (f.infB.get() && !v ? "Falta el monto de impuestos." : "");
+      f.infB.spec.custom = (v) => (f.infT.get() && !v ? "Falta la tarifa base." : "");
+      const totalEl = h("p", { role: "status", "aria-live": "polite", style: "font-weight:600" });
+      const upd = () => {
+        const a = Number(f.adultB.get()) + Number(f.adultT.get());
+        totalEl.textContent = MONEY_RE.test(f.adultB.get()) && MONEY_RE.test(f.adultT.get()) ? `Total adulto: ${a.toFixed(2)} ${currency.get() || ""}` : "";
+      };
+      const priceBox = h("div", { style: "margin-left:2rem" }, h("div", { class: "grid2" }, f.adultB.el, f.adultT.el, f.childB.el, f.childT.el, f.infB.el, f.infT.el, f.bag.el, f.fee.el), totalEl);
+      const sync = () => { priceBox.style.display = fon.checked ? "" : "none"; upd(); };
+      fon.addEventListener("change", sync);
+      [f.adultB, f.adultT, currency].forEach((x) => x.input.addEventListener("input", upd));
+      sync();
+      const code = `${fam.name} (${fam.code}) · ${fam.changeable ? "cambiable" : "no cambiable"} · ${fam.checkedBagsIncluded} maleta(s) bodega`;
+      inner.append(h("div", { class: "check" }, fon, h("label", { for: fon.id, text: `Vender con ${code}` })), priceBox);
+      famRows.push(f);
+    }
+    const syncCab = () => { inner.style.display = on.checked ? "" : "none"; };
+    on.addEventListener("change", syncCab); syncCab();
+    box.append(cabFs);
+    model.push({ cab, on, seats, famRows });
+  }
+  const summary = h("div");
+  box.append(summary);
+
+  return {
+    validate() {
+      clear(summary);
+      if (!validateFields([currency])) return false;
+      const actives = model.filter((m) => m.on.checked);
+      if (!actives.length) { summary.append(alertBox("error", "Activa al menos una cabina.")); return false; }
+      let anyFam = false;
+      for (const m of actives) {
+        if (!validateFields([m.seats])) return false;
+        for (const f of m.famRows) {
+          if (!f.on.checked) continue;
+          anyFam = true;
+          if (!validateFields([f.adultB, f.adultT, f.childB, f.childT, f.infB, f.infT, f.bag, f.fee])) return false;
+        }
+      }
+      if (!anyFam) { summary.append(alertBox("error", "Elige al menos una familia tarifaria con su precio: sin tarifa el vuelo no se puede vender.")); return false; }
+      return true;
+    },
+    collect() {
+      W.currency = currency.get();
+      W.cabins = {};
+      for (const m of model) {
+        const fm = {};
+        for (const f of m.famRows) {
+          fm[f.fam.id] = { on: f.on.checked, adultB: f.adultB.get(), adultT: f.adultT.get(), childB: f.childB.get(), childT: f.childT.get(), infB: f.infB.get(), infT: f.infT.get(), bag: f.bag.get(), fee: f.fee.get(), name: f.fam.name, code: f.fam.code };
+        }
+        W.cabins[m.cab.cabinClass] = { on: m.on.checked, seats: m.seats.get(), fams: fm };
+      }
+      W.famList = fams;
+    },
+  };
+}
+
+/* ----- Paso 5: Revisión y confirmación ----- */
+function wizardPlan() {
+  const flightNumber = W.flightMode === "existing" ? W.existingFlight : W.airline + W.number;
+  const dates = wizardDates();
+  const cabins = Object.entries(W.cabins).filter(([, c]) => c.on).map(([cabinClass, c]) => ({ cabinClass, totalSeats: Number(c.seats) }));
+  const fares = [];
+  for (const [cabinClass, c] of Object.entries(W.cabins)) {
+    if (!c.on) continue;
+    for (const [fareFamilyId, f] of Object.entries(c.fams)) {
+      if (!f.on) continue;
+      const prices = [{ passengerType: "ADULT", baseFare: f.adultB, taxes: f.adultT }];
+      if (f.childB && f.childT) prices.push({ passengerType: "CHILD", baseFare: f.childB, taxes: f.childT });
+      if (f.infB && f.infT) prices.push({ passengerType: "INFANT", baseFare: f.infB, taxes: f.infT });
+      const body = { fareFamilyId, currency: W.currency, extraBagPrice: f.bag, prices };
+      if (f.fee) body.changeFee = f.fee;
+      fares.push({ cabinClass, name: f.name, code: f.code, body });
+    }
+  }
+  const departures = dates.map((d) => {
+    const body = {
+      flightNumber, seatMapId: W.seatMapId,
+      scheduledDeparture: ecToUtcIso(d, W.depTime), scheduledArrival: ecToUtcIso(d, W.arrTime, Number(W.arrPlus)), cabins,
+    };
+    if (W.depTerminal) body.departureTerminal = W.depTerminal;
+    if (W.arrTerminal) body.arrivalTerminal = W.arrTerminal;
+    return { date: d, body };
+  });
+  return { flightNumber, departures, fares, cabins };
+}
+
+async function stepReview(box, ctx) {
+  const plan = wizardPlan();
+  const ap = (code) => { const a = W.airports.find((x) => x.code === code); return a ? `${code} — ${a.name}` : code; };
+  const sm = W.seatMaps.find((m) => m.id === W.seatMapId);
+  const retry = () => ctx.refresh();
+  box.append(h("p", { text: "Revisa el resumen. Al confirmar se crean, en orden: el número de vuelo (si es nuevo), las salidas y las tarifas de cada salida." }));
+  box.append(h("dl", { class: "dl" },
+    h("dt", { text: "Ruta" }), h("dd", { text: `${ap(W.origin)}  →  ${ap(W.destination)}` }),
+    h("dt", { text: "Número de vuelo" }), h("dd", { text: `${plan.flightNumber} ${W.flightMode === "new" ? "(se creará)" : "(existente)"}` }),
+    h("dt", { text: "Aerolínea y equipo" }), h("dd", { text: `${W.airline} · ${W.model}` }),
+    h("dt", { text: "Mapa de asientos" }), h("dd", { text: sm ? sm.name : W.seatMapId }),
+    h("dt", { text: "Salidas" }), h("dd", { text: `${plan.departures.length}: ${plan.departures.map((d) => d.date).slice(0, 8).join(", ")}${plan.departures.length > 8 ? "…" : ""}` }),
+    h("dt", { text: "Horario" }), h("dd", { text: `Sale ${W.depTime}, llega ${W.arrTime}${W.arrPlus !== "0" ? " (+" + W.arrPlus + " día)" : ""} · hora de Ecuador` }),
+    h("dt", { text: "Primera salida" }), h("dd", { text: `${fmtEC(plan.departures[0].body.scheduledDeparture)} (guardada como ${plan.departures[0].body.scheduledDeparture} UTC)` }),
+    h("dt", { text: "Cabinas" }), h("dd", { text: plan.cabins.map((c) => `${CABIN_ES[c.cabinClass]}: ${c.totalSeats} cupos`).join(" · ") })));
+  const rows = plan.fares.map((f) => {
+    const a = f.body.prices[0];
+    return h("tr", {}, h("td", { text: CABIN_ES[f.cabinClass] }), h("td", { text: `${f.name} (${f.code})` }),
+      h("td", { text: `${(Number(a.baseFare) + Number(a.taxes)).toFixed(2)} ${W.currency}` }), h("td", { text: f.body.prices.map((p) => p.passengerType).join(", ") }), h("td", { text: f.body.extraBagPrice }));
+  });
+  box.append(h("h3", { text: "Tarifas por salida" }),
+    h("div", { class: "table-wrap" }, h("table", {}, h("caption", { text: `Se crearán ${plan.fares.length * plan.departures.length} tarifas en total` }),
+      h("thead", {}, h("tr", {}, ["Cabina", "Familia", "Total adulto", "Pasajeros", "Maleta extra"].map((t) => h("th", { scope: "col", text: t })))), h("tbody", {}, rows))));
+
+  const logBox = h("ul", { class: "progress-list", "aria-label": "Avance de la creación" });
+  const outBox = h("div", { role: "status", "aria-live": "polite" });
+  const confirmBtn = h("button", { class: "btn btn-primary", type: "button", text: "Confirmar y crear vuelo" });
+  const backBtn = h("button", { class: "btn", type: "button", text: "Atrás", onclick: () => ctx.go(-1) });
+  box.append(h("div", { class: "actions", style: "margin-top:1rem" }, backBtn, confirmBtn), outBox, logBox);
+  confirmBtn.addEventListener("click", async () => {
+    confirmBtn.disabled = backBtn.disabled = true;
+    clear(outBox);
+    try {
+      await executePlan(plan, (msg) => logBox.append(h("li", { text: msg })));
+      W.result.done = true;
+      confirmBtn.remove(); backBtn.remove();
+      outBox.append(successPanel(plan));
+      outBox.querySelector("h3")?.focus?.();
+    } catch (e) {
+      outBox.append(alertBox("error", `${e.stepLabel ? e.stepLabel + ": " : ""}${friendly(e)} Lo ya creado se conserva; al reintentar solo se crea lo que falta.`));
+      confirmBtn.textContent = "Reintentar lo pendiente";
+      confirmBtn.disabled = backBtn.disabled = false;
+    }
+  });
+  return { validate: () => true, collect() {} };
+}
+
+async function withRetry429(fn, say) {
+  for (let i = 0; ; i++) {
+    try { return await fn(); }
+    catch (e) {
+      if (!(e instanceof ApiError) || e.status !== 429 || i >= 3) throw e;
+      const wait = Math.min(Math.max(parseInt(e.retryAfter, 10) || 5, 1), 65);
+      say(`Límite de solicitudes: esperando ${wait} s para continuar…`);
+      await new Promise((r) => setTimeout(r, wait * 1000));
+    }
+  }
+}
+
+async function executePlan(plan, say) {
+  const R = (W.result = W.result || { flightCreated: false, deps: [], done: false, flightNumber: plan.flightNumber });
+  const call = async (label, method, path, body) => {
+    try { return await withRetry429(() => api(method, path, { body }), say); }
+    catch (e) { if (e instanceof ApiError) e.stepLabel = label; throw e; }
+  };
+  if (W.flightMode === "new" && !R.flightCreated) {
+    say(`Creando el vuelo ${plan.flightNumber}…`);
+    await call(`Vuelo ${plan.flightNumber}`, "POST", "/admin/flights", { marketingCarrier: W.airline, number: W.number, origin: W.origin, destination: W.destination });
+    R.flightCreated = true;
+    invalidateCache();
+    say(`✔ Vuelo ${plan.flightNumber} creado.`);
+  }
+  for (let i = 0; i < plan.departures.length; i++) {
+    const d = plan.departures[i];
+    R.deps[i] = R.deps[i] || { date: d.date, id: null, fares: {} };
+    const slot = R.deps[i];
+    if (!slot.id) {
+      say(`Creando la salida del ${d.date}…`);
+      const dep = await call(`Salida del ${d.date}`, "POST", "/admin/departures", d.body);
+      slot.id = dep.id;
+      say(`✔ Salida ${d.date} creada (${dep.id}).`);
+    }
+    for (const f of plan.fares) {
+      if (slot.fares[f.body.fareFamilyId]) continue;
+      say(`Creando tarifa ${f.code} para ${d.date}…`);
+      const fare = await call(`Tarifa ${f.code} del ${d.date}`, "POST", "/admin/fares", { departureId: slot.id, ...f.body });
+      slot.fares[f.body.fareFamilyId] = fare.id;
+    }
+    say(`✔ ${plan.fares.length} tarifa(s) listas para ${d.date}.`);
+  }
+}
+
+function successPanel(plan) {
+  const R = W.result;
+  const rows = R.deps.map((d) => h("tr", {}, h("td", { text: d.date }), h("td", { text: d.id }), h("td", { text: String(Object.keys(d.fares).length) })));
+  return h("div", { class: "alert alert-ok", style: "margin-top:1rem" },
+    h("h3", { tabindex: "-1", text: `Vuelo ${plan.flightNumber} creado` , style: "margin-top:0" }),
+    h("p", { text: `Se crearon ${R.deps.length} salida(s) con sus tarifas.` }),
+    h("div", { class: "table-wrap" }, h("table", {}, h("caption", { text: "Identificadores creados" }),
+      h("thead", {}, h("tr", {}, ["Fecha (Ecuador)", "Identificador de la salida", "Tarifas"].map((t) => h("th", { scope: "col", text: t })))), h("tbody", {}, rows))),
+    h("div", { class: "actions", style: "margin-top:.75rem" },
+      h("a", { class: "btn btn-primary", href: `#/lista/departures?flightNumber=${encodeURIComponent(plan.flightNumber)}`, text: "Ver en la lista" }),
+      h("button", { class: "btn", type: "button", text: "Crear otro vuelo", onclick: () => { W = newWizardState(); route(); } })));
+}
+/* ==========================================================================
+   Listados con búsqueda, paginación por cursor y CRUD (baja lógica)
+   ========================================================================== */
+const STATUS_ES = { SCHEDULED: "Programado", BOARDING: "Embarcando", DEPARTED: "Despegó", DELAYED: "Demorado", ARRIVED: "Aterrizó", CANCELLED: "Cancelado", DIVERTED: "Desviado" };
+const REGEX = {
+  iata3: /^[A-Z]{3}$/, iata2: /^[A-Z0-9]{2}$/, model3: /^[A-Z0-9]{3}$/, pais2: /^[A-Z]{2}$/, flightNo: /^[A-Z0-9]{2}[1-9][0-9]{0,3}$/,
+  pct: /^(100(\.0{1,2})?|\d{1,2}(\.\d{1,2})?)$/, uuid: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+};
+const optsAirports = () => cached("airports", () => loadAll("/admin/airports")).then((l) => optList(l, (a) => a.code, (a) => `${a.code} — ${a.cityName}`));
+const optsAirlines = () => cached("airlines", () => loadAll("/admin/airlines")).then((l) => optList(l, (a) => a.code, (a) => `${a.code} — ${a.name}`));
+const optsModels = () => cached("models", () => loadAll("/admin/aircraft-models")).then((l) => optList(l, (m) => m.code, (m) => `${m.name} (${m.code})`));
+const optsCountries = () => cached("countries", () => loadAll("/admin/countries")).then((l) => optList(l, (c) => c.code, (c) => `${c.code} — ${c.name}`));
+const optsCities = () => cached("cities", () => loadAll("/admin/cities")).then((l) => optList(l, (c) => c.id, (c) => `${c.name} (${c.country})`));
+const optsCabins = () => Promise.resolve(optList(Object.keys(CABIN_ES), (c) => c, (c) => CABIN_ES[c]));
+const optsStatus = () => Promise.resolve(optList(Object.keys(STATUS_ES), (s) => s, (s) => STATUS_ES[s], "Todos"));
+const activeCell = (r) => h("span", { class: "badge" + (r.active ? "" : " off"), text: r.active ? "Activo" : "Inactivo" });
+const rulesFields = () => [
+  { name: "changeable", label: "Permite cambios de fecha", type: "checkbox" },
+  { name: "cancellationPenaltyPercent", label: "Penalización por cancelar (%)", pattern: REGEX.pct, msg: "Un número de 0 a 100 con hasta 2 decimales.", max: 6, inputmode: "decimal", default: "0" },
+  { name: "personalItemIncluded", label: "Incluye artículo personal", type: "checkbox", default: true },
+  { name: "carryOnBagsIncluded", label: "Equipaje de mano incluido (0 a 3)", type: "number", min: 0, maxVal: 3, max: 1, default: "1" },
+  { name: "checkedBagsIncluded", label: "Maletas de bodega incluidas (0 a 5)", type: "number", min: 0, maxVal: 5, max: 1, default: "0" },
+  { name: "maxExtraBags", label: "Máximo de maletas extra (0 a 10)", type: "number", min: 0, maxVal: 10, max: 2, default: "2" },
+];
+
+const ENT = {
+  countries: {
+    title: "Países", one: "país", path: "/admin/countries", id: (r) => r.code,
+    cols: [["Código", (r) => r.code], ["ISO3", (r) => r.iso3], ["Nombre", (r) => r.name], ["Estado", activeCell]],
+    fields: async () => [
+      { name: "code", label: "Código ISO (2 letras)", required: true, max: 2, upper: true, pattern: REGEX.pais2, msg: "Dos letras mayúsculas, ej. EC.", scope: "create" },
+      { name: "iso3", label: "Código ISO3 (3 letras)", required: true, max: 3, upper: true, pattern: REGEX.iata3, msg: "Tres letras mayúsculas, ej. ECU.", scope: "create" },
+      { name: "name", label: "Nombre", required: true, max: 100 },
+    ],
+  },
+  cities: {
+    title: "Ciudades", one: "ciudad", path: "/admin/cities", id: (r) => r.id,
+    cols: [["Nombre", (r) => r.name], ["País", (r) => r.country], ["Zona horaria", (r) => r.timeZone], ["Estado", activeCell]],
+    filters: async () => [{ name: "country", label: "País", type: "select", options: await optsCountries().then((o) => [{ value: "", label: "Todos" }, ...o.slice(1)]) }],
+    fields: async () => [
+      { name: "country", label: "País", type: "select", required: true, options: await optsCountries(), scope: "create" },
+      { name: "name", label: "Nombre", required: true, max: 100 },
+      { name: "timeZone", label: "Zona horaria IANA (opcional)", max: 60, placeholder: "America/Guayaquil", pattern: /^[A-Za-z_]+(\/[A-Za-z0-9_+-]+)+$/, msg: "Usa el formato Continente/Ciudad, ej. America/Guayaquil." },
+    ],
+  },
+  airports: {
+    title: "Aeropuertos", one: "aeropuerto", path: "/admin/airports", id: (r) => r.code,
+    cols: [["Código", (r) => r.code], ["Nombre", (r) => r.name], ["Ciudad", (r) => r.cityName], ["País", (r) => r.country], ["Estado", activeCell]],
+    filters: async () => [{ name: "country", label: "País", type: "select", options: await optsCountries().then((o) => [{ value: "", label: "Todos" }, ...o.slice(1)]) }],
+    fields: async () => [
+      { name: "code", label: "Código IATA (3 letras)", required: true, max: 3, upper: true, pattern: REGEX.iata3, msg: "Tres letras mayúsculas, ej. UIO.", scope: "create" },
+      { name: "name", label: "Nombre", required: true, max: 150 },
+      { name: "cityId", label: "Ciudad", type: "select", required: true, options: await optsCities() },
+    ],
+  },
+  airlines: {
+    title: "Aerolíneas", one: "aerolínea", path: "/admin/airlines", id: (r) => r.code,
+    cols: [["Código", (r) => r.code], ["Nombre", (r) => r.name], ["Prefijo de boleto", (r) => r.ticketPrefix || "—"], ["Estado", activeCell]],
+    fields: async () => [
+      { name: "code", label: "Código IATA (2 caracteres)", required: true, max: 2, upper: true, pattern: REGEX.iata2, msg: "Dos letras o dígitos mayúsculos, ej. AV.", scope: "create" },
+      { name: "name", label: "Nombre", required: true, max: 100 },
+      { name: "ticketPrefix", label: "Prefijo de boleto (3 dígitos, opcional)", max: 3, pattern: /^[0-9]{3}$/, msg: "Tres dígitos, ej. 134.", nullable: true },
+    ],
+  },
+  "aircraft-models": {
+    title: "Equipos (aeronaves)", one: "equipo", path: "/admin/aircraft-models", id: (r) => r.code,
+    cols: [["Código", (r) => r.code], ["Nombre", (r) => r.name], ["Estado", activeCell]],
+    fields: async () => [
+      { name: "code", label: "Código IATA (3 caracteres)", required: true, max: 3, upper: true, pattern: REGEX.model3, msg: "Tres letras o dígitos mayúsculos, ej. 320.", scope: "create" },
+      { name: "name", label: "Nombre", required: true, max: 100 },
+    ],
+  },
+  "fare-families": {
+    title: "Familias tarifarias", one: "familia tarifaria", path: "/admin/fare-families", id: (r) => r.id,
+    cols: [["Aerolínea", (r) => r.airline], ["Cabina", (r) => CABIN_ES[r.cabinClass] || r.cabinClass], ["Código", (r) => r.code], ["Nombre", (r) => r.name],
+      ["Cambios", (r) => (r.changeable ? "Sí" : "No")], ["Penalización", (r) => `${r.cancellationPenaltyPercent}%`], ["Maletas", (r) => String(r.checkedBagsIncluded)], ["Estado", activeCell]],
+    filters: async () => [{ name: "airline", label: "Aerolínea", type: "select", options: (await optsAirlines()).map((o, i) => (i ? o : { value: "", label: "Todas" })) },
+      { name: "cabinClass", label: "Cabina", type: "select", options: (await optsCabins()).map((o, i) => (i ? o : { value: "", label: "Todas" })) }],
+    fields: async () => [
+      { name: "airline", label: "Aerolínea", type: "select", required: true, options: await optsAirlines(), scope: "create" },
+      { name: "cabinClass", label: "Cabina", type: "select", required: true, options: await optsCabins(), scope: "create" },
+      { name: "code", label: "Código (2 a 20: mayúsculas, dígitos o _)", required: true, max: 20, upper: true, pattern: /^[A-Z0-9_]{2,20}$/, msg: "De 2 a 20 mayúsculas, dígitos o guion bajo.", scope: "create" },
+      { name: "name", label: "Nombre", required: true, max: 100 },
+      ...rulesFields(),
+    ],
+  },
+  "seat-maps": {
+    title: "Mapas de asientos", one: "mapa de asientos", path: "/admin/seat-maps", id: (r) => r.id, noCreate: true,
+    note: "El alta de mapas (filas y asientos) todavía no está en este panel: se hace por la API (POST /admin/seat-maps). Aquí puedes renombrar y dar de baja.",
+    cols: [["Nombre", (r) => r.name], ["Aerolínea", (r) => r.airline], ["Equipo", (r) => r.aircraftModel],
+      ["Cabinas", (r) => r.cabins.map((c) => `${CABIN_ES[c.cabinClass] || c.cabinClass} ${c.seats}`).join(" · ")], ["Estado", activeCell]],
+    filters: async () => [{ name: "airline", label: "Aerolínea", type: "select", options: (await optsAirlines()).map((o, i) => (i ? o : { value: "", label: "Todas" })) },
+      { name: "aircraftModel", label: "Equipo", type: "select", options: (await optsModels()).map((o, i) => (i ? o : { value: "", label: "Todos" })) }],
+    fields: async () => [{ name: "name", label: "Nombre", required: true, max: 150 }],
+  },
+  flights: {
+    title: "Rutas y números de vuelo", one: "vuelo", path: "/admin/flights", id: (r) => r.flightNumber,
+    cols: [["Vuelo", (r) => r.flightNumber], ["Comercializa", (r) => r.marketingCarrier], ["Opera", (r) => r.operatingCarrier], ["Origen", (r) => r.origin], ["Destino", (r) => r.destination], ["Estado", activeCell]],
+    filters: async () => {
+      const ap = (await optsAirports()).map((o, i) => (i ? o : { value: "", label: "Todos" }));
+      return [{ name: "airline", label: "Aerolínea", type: "select", options: (await optsAirlines()).map((o, i) => (i ? o : { value: "", label: "Todas" })) },
+        { name: "origin", label: "Origen", type: "select", options: ap }, { name: "destination", label: "Destino", type: "select", options: ap }];
+    },
+    fields: async () => {
+      const air = await optsAirlines(), ap = await optsAirports();
+      return [
+        { name: "marketingCarrier", label: "Aerolínea que lo comercializa", type: "select", required: true, options: air, scope: "create" },
+        { name: "number", label: "Número (1 a 4 dígitos)", type: "number", required: true, max: 4, pattern: /^[1-9][0-9]{0,3}$/, msg: "De 1 a 4 dígitos, sin ceros a la izquierda.", scope: "create" },
+        { name: "origin", label: "Origen", type: "select", required: true, options: ap, scope: "create" },
+        { name: "destination", label: "Destino", type: "select", required: true, options: ap, scope: "create", custom: (v, all) => (v === all.origin ? "El destino debe ser distinto del origen." : "") },
+        { name: "operatingCarrier", label: "Aerolínea que lo opera (opcional)", type: "select", options: [{ value: "", label: "La misma que lo comercializa" }, ...air.slice(1)] },
+      ];
+    },
+  },
+  departures: {
+    title: "Vuelos (salidas programadas)", one: "salida", path: "/admin/departures", id: (r) => r.id, wizard: true, deleteLabel: "Cancelar salida",
+    cols: [["Vuelo", (r) => r.flightNumber], ["Ruta", (r) => `${r.origin} → ${r.destination}`], ["Salida (Ecuador)", (r) => fmtEC(r.scheduledDeparture)], ["Llegada (Ecuador)", (r) => fmtEC(r.scheduledArrival)],
+      ["Cabinas", (r) => r.cabins.map((c) => `${CABIN_ES[c.cabinClass] || c.cabinClass} ${c.availableSeats}/${c.totalSeats}`).join(" · ")],
+      ["Estado", (r) => h("span", { class: "badge" + (r.active ? "" : " off"), text: STATUS_ES[r.status] || r.status })]],
+    filters: async () => [
+      { name: "flightNumber", label: "Número de vuelo", upper: true, max: 6, pattern: REGEX.flightNo, msg: "Ej. AV1500." },
+      { name: "dateFrom", label: "Desde (fecha de salida)", type: "date" }, { name: "dateTo", label: "Hasta", type: "date" },
+      { name: "status", label: "Estado", type: "select", options: await optsStatus() }],
+    fields: async () => [
+      { name: "scheduledDeparture", label: "Salida (hora de Ecuador)", type: "datetime", required: true },
+      { name: "scheduledArrival", label: "Llegada (hora de Ecuador)", type: "datetime", required: true, custom: (v, all) => (all.scheduledDeparture && v <= all.scheduledDeparture ? "La llegada debe ser posterior a la salida." : "") },
+      { name: "departureTerminal", label: "Terminal de salida", max: 10, nullable: true },
+      { name: "arrivalTerminal", label: "Terminal de llegada", max: 10, nullable: true },
+      { name: "status", label: "Estado", type: "select", required: true, options: Object.keys(STATUS_ES).filter((s) => s !== "CANCELLED").map((s) => ({ value: s, label: STATUS_ES[s] })),
+        hint: "Para cancelar la salida usa el botón \"Cancelar salida\"." },
+    ],
+    editOnly: true,
+  },
+  fares: {
+    title: "Tarifas", one: "tarifa", path: "/admin/fares", id: (r) => r.id, noCreate: true,
+    note: "Las tarifas se crean junto con el vuelo en el asistente \"Crear vuelo\". Aquí puedes ajustar maleta extra y cargo por cambio, y dar de baja.",
+    cols: [["Vuelo", (r) => r.flightNumber], ["Familia", (r) => r.fareBrand], ["Cabina", (r) => CABIN_ES[r.cabinClass] || r.cabinClass], ["Moneda", (r) => r.currency],
+      ["Total adulto", (r) => { const a = r.prices.find((p) => p.passengerType === "ADULT"); return a ? a.total : "—"; }], ["Maleta extra", (r) => r.extraBagPrice], ["Cambio", (r) => r.changeFee], ["Estado", activeCell]],
+    filters: async () => [],
+    fields: async () => [
+      { name: "extraBagPrice", label: "Precio de maleta extra", required: true, pattern: MONEY_RE, msg: MONEY_MSG, max: 13, inputmode: "decimal" },
+      { name: "changeFee", label: "Cargo por cambio", pattern: MONEY_RE, msg: MONEY_MSG, max: 13, inputmode: "decimal" },
+    ],
+  },
+};
+
+/** Valor inicial de un campo del formulario a partir del registro. */
+function initialFor(s, row) {
+  if (!row) return s.default;
+  const v = row[s.name];
+  if (s.type === "datetime") return utcIsoToEcInput(v);
+  if (s.type === "checkbox") return !!v;
+  return v == null ? "" : String(v);
+}
+/** Cuerpo de la petición: al crear, todo lo escrito; al editar, solo lo que cambió (PATCH parcial). */
+function bodyFrom(specs, vals, row) {
+  const body = {};
+  for (const s of specs) {
+    let v = vals[s.name];
+    if (row) {
+      if (s.scope === "create") continue;
+      if (String(initialFor(s, row)) === String(v)) continue;
+    } else if (s.scope === "edit") continue;
+    if (s.type === "checkbox") v = !!v;
+    else if (v === "" || v == null) { if (row && s.nullable) v = null; else if (row && s.type === "select" && s.name === "operatingCarrier") continue; else continue; }
+    else if (s.type === "number") v = Number(v);
+    else if (s.type === "datetime") v = ecInputToUtcIso(v);
+    body[s.name] = v;
+  }
+  return body;
+}
+
+routes.lista = (main, entId, params) => {
+  const cfg = ENT[entId];
+  if (!cfg) { main.append(pageHead("No encontrado"), alertBox("error", "Esa pantalla no existe.")); return; }
+  const L = { cursors: [undefined], page: 0, items: [], next: null, filters: {}, inactive: false, limit: 10, q: "" };
+  if (params.flightNumber) L.filters.flightNumber = params.flightNumber;
+  const createBtn = cfg.wizard
+    ? h("a", { class: "btn btn-primary", href: "#/crear-vuelo", text: "Crear vuelo" })
+    : cfg.noCreate ? null : h("button", { class: "btn btn-primary", type: "button", text: `Nuevo ${cfg.one}`, onclick: () => openForm(null) });
+  main.append(pageHead(cfg.title, cfg.note || "Búsqueda, paginación y administración. Eliminar es siempre una baja lógica.", createBtn));
+  const msg = h("div", { role: "status", "aria-live": "polite" });
+  const tableBox = h("div");
+  const pager = h("div", { class: "pager" });
+  const toolbar = h("form", { class: "toolbar", role: "search", "aria-label": `Buscar en ${cfg.title}`, novalidate: true });
+  main.append(msg, toolbar, tableBox, pager);
+
+  const search = mkField({ name: "q", label: "Buscar en esta página", placeholder: "Texto a buscar…", max: 60 }, "");
+  search.input.setAttribute("type", "search");
+  search.input.addEventListener("input", () => { L.q = search.get().toLowerCase(); draw(); });
+  const inact = h("input", { type: "checkbox", id: "f-inact" });
+  const limitSel = mkField({ name: "limit", label: "Filas por página", type: "select", options: [10, 25, 50].map((n) => ({ value: String(n), label: String(n) })) }, "10");
+  let filterFields = [];
+
+  const load = async () => {
+    clear(msg);
+    clear(tableBox).append(h("p", { text: "Cargando…" }));
+    try {
+      const q = { limit: L.limit, cursor: L.cursors[L.page], includeInactive: L.inactive ? "true" : undefined, ...L.filters };
+      const page = await api("GET", cfg.path, { query: q });
+      L.items = page.items; L.next = page.nextCursor || null;
+      draw();
+    } catch (e) { clear(tableBox); msg.append(alertBox("error", friendly(e))); clear(pager); }
+  };
+  const reload = (reset) => { if (reset) { L.cursors = [undefined]; L.page = 0; } return load(); };
+
+  const draw = () => {
+    clear(tableBox);
+    const shown = L.items.filter((r) => !L.q || JSON.stringify(Object.values(r)).toLowerCase().includes(L.q) || cfg.cols.some(([, v]) => { const x = v(r); return typeof x === "string" && x.toLowerCase().includes(L.q); }));
+    if (!shown.length) tableBox.append(h("p", { class: "card", text: L.items.length ? "Ninguna fila de esta página coincide con la búsqueda." : "No hay registros con estos filtros." }));
+    else {
+      const head = h("tr", {}, cfg.cols.map(([t]) => h("th", { scope: "col", text: t })), h("th", { scope: "col", text: "Acciones" }));
+      const body = shown.map((r) => {
+        const label = cfg.id(r);
+        const acts = h("div", { class: "actions" },
+          h("button", { class: "btn btn-sm", type: "button", text: "Editar", "aria-label": `Editar ${cfg.one} ${label}`, onclick: () => openForm(r) }),
+          r.active
+            ? h("button", { class: "btn btn-sm btn-danger", type: "button", text: cfg.deleteLabel || "Dar de baja", "aria-label": `${cfg.deleteLabel || "Dar de baja"} ${cfg.one} ${label}`, onclick: () => deactivate(r) })
+            : h("button", { class: "btn btn-sm", type: "button", text: "Reactivar", "aria-label": `Reactivar ${cfg.one} ${label}`, onclick: () => reactivate(r) }));
+        return h("tr", { class: r.active ? "" : "inactive" }, cfg.cols.map(([, v]) => h("td", {}, v(r))), h("td", {}, acts));
+      });
+      tableBox.append(h("div", { class: "table-wrap", tabindex: "0", role: "region", "aria-label": `Tabla de ${cfg.title}` },
+        h("table", {}, h("caption", { text: `${shown.length} de ${L.items.length} fila(s) en esta página · página ${L.page + 1}` }), h("thead", {}, head), h("tbody", {}, body))));
+    }
+    clear(pager).append(
+      h("div", { class: "actions" },
+        h("button", { class: "btn", type: "button", text: "← Anterior", disabled: L.page === 0, onclick: () => { L.page--; load(); } }),
+        h("button", { class: "btn", type: "button", text: "Siguiente →", disabled: !L.next, onclick: () => { L.cursors[L.page + 1] = L.next; L.page++; load(); } })),
+      h("span", { style: "color:var(--muted)", text: `Página ${L.page + 1}${L.next ? "" : " (última)"}` }));
+  };
+
+  const deactivate = async (r) => {
+    const ok = await confirmDialog(`${cfg.deleteLabel || "Dar de baja"}: ${cfg.id(r)}`,
+      "Es una baja lógica: el registro queda inactivo, no se borra, y se puede reactivar después. Si otros registros activos lo usan, la API no lo permitirá.", cfg.deleteLabel || "Dar de baja");
+    if (!ok) return;
+    try { await api("DELETE", `${cfg.path}/${encodeURIComponent(cfg.id(r))}`); invalidateCache(); toast("Listo: registro dado de baja."); await reload(false); }
+    catch (e) { clear(msg).append(alertBox("error", friendly(e))); msg.scrollIntoView({ block: "nearest" }); }
+  };
+  const reactivate = async (r) => {
+    try { await api("POST", `${cfg.path}/${encodeURIComponent(cfg.id(r))}/reactivate`); invalidateCache(); toast("Listo: registro reactivado."); await reload(false); }
+    catch (e) { clear(msg).append(alertBox("error", friendly(e))); msg.scrollIntoView({ block: "nearest" }); }
+  };
+  const openForm = async (row) => {
+    let specs;
+    try { specs = await cfg.fields(); } catch (e) { clear(msg).append(alertBox("error", friendly(e))); return; }
+    specs = specs.filter((s) => (row ? s.scope !== "create" : s.scope !== "edit"));
+    const values = {};
+    for (const s of specs) values[s.name] = initialFor(s, row);
+    let close;
+    const form = mkForm(specs, values, {
+      submitLabel: row ? "Guardar cambios" : "Crear",
+      onCancel: () => close(),
+      onSubmit: async (vals) => {
+        const body = bodyFrom(specs, vals, row);
+        if (row && !Object.keys(body).length) { close(); toast("No hay cambios que guardar."); return; }
+        if (row) await api("PATCH", `${cfg.path}/${encodeURIComponent(cfg.id(row))}`, { body });
+        else await api("POST", cfg.path, { body });
+        invalidateCache(); close(); toast(row ? "Cambios guardados." : "Registro creado."); await reload(!row);
+      },
+    });
+    close = openDialog(row ? `Editar ${cfg.one} ${cfg.id(row)}` : `Nuevo ${cfg.one}`, form.el);
+    const first = form.el.querySelector("input,select"); if (first) first.focus();
+  };
+
+  // Barra de herramientas: filtros del servidor + búsqueda local + inactivos + tamaño de página
+  (async () => {
+    try { filterFields = cfg.filters ? (await cfg.filters()).map((s) => mkField(s, L.filters[s.name] || "")) : []; } catch (e) { msg.append(alertBox("error", friendly(e))); }
+    const apply = h("button", { class: "btn btn-primary", type: "submit", text: "Aplicar filtros" });
+    toolbar.append(search.el, ...filterFields.map((f) => f.el), limitSel.el,
+      h("div", { class: "field" }, h("div", { class: "check" }, inact, h("label", { for: "f-inact", text: "Mostrar inactivos" }))), h("div", { class: "field" }, apply));
+    toolbar.addEventListener("submit", (ev) => {
+      ev.preventDefault();
+      if (!validateFields(filterFields)) return;
+      L.filters = {};
+      for (const f of filterFields) if (f.get()) L.filters[f.spec.name] = f.get();
+      L.inactive = inact.checked; L.limit = Number(limitSel.get());
+      reload(true);
+    });
+    inact.addEventListener("change", () => toolbar.requestSubmit());
+    limitSel.input.addEventListener("change", () => toolbar.requestSubmit());
+    filterFields.forEach((f) => f.input.tagName === "SELECT" && f.input.addEventListener("change", () => toolbar.requestSubmit()));
+  })();
+  load();
+};
+
+/* ---------- Arranque ---------- */
+(async function start() {
+  const rt = loadRefresh();
+  if (rt && API_URL) {
+    session.refresh = rt;
+    try { await doRefresh(); await loadProfile(); enterApp(); return; }
+    catch (_) { endSessionSilently(); }
+  }
+  renderLogin();
+})();
+</script>
+</body>
+</html>
