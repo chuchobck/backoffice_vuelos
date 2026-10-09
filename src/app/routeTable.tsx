@@ -4,6 +4,7 @@ import { AirlinesPage } from '@/pages/AirlinesPage';
 import { AirportsPage } from '@/pages/AirportsPage';
 import { CitiesPage } from '@/pages/CitiesPage';
 import { CountriesPage } from '@/pages/CountriesPage';
+import { CreateFlightPage } from '@/pages/CreateFlightPage';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { DeparturesPage } from '@/pages/DeparturesPage';
 import { FareFamiliesPage } from '@/pages/FareFamiliesPage';
@@ -38,6 +39,7 @@ export function buildRoutes(): RouteObject[] {
               children: [
                 { path: paths.home, element: <Navigate to={paths.dashboard} replace /> },
                 { path: paths.dashboard, element: <DashboardPage /> },
+                { path: paths.createFlight, element: <CreateFlightPage /> },
                 { path: paths.departures, element: <DeparturesPage /> },
                 { path: paths.flightNumbers, element: <FlightNumbersPage /> },
                 { path: paths.routes, element: <RoutesPage /> },

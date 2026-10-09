@@ -3,7 +3,7 @@ import { es, fmt } from '@/shared/i18n';
 import { passengerLabel } from '@/shared/lib/labels';
 import { addMoney } from '@/shared/lib/money';
 import { Field, Input } from '@/shared/ui';
-import { PRICE_KINDS } from './farePrices';
+import { PRICE_KINDS } from '@/shared/lib/farePrices';
 
 const f = es.entities.fares.form;
 

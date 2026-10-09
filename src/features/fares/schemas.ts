@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { es } from '@/shared/i18n';
 import { moneyField, optionalMoney } from '@/shared/lib/schemas';
-import { PRICE_KINDS } from './farePrices';
+import { PRICE_KINDS } from '@/shared/lib/farePrices';
 
 const v = es.validation;
 const f = es.entities.fares.form;

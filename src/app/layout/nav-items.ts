@@ -60,15 +60,19 @@ export const NAV_GROUPS: NavGroup[] = [
   },
 ];
 
-export function isNavItemActive(item: NavItem, pathname: string): boolean {
-  return pathname === item.to || (item.to !== paths.dashboard && pathname.startsWith(`${item.to}/`));
+const ALL_ITEMS = NAV_GROUPS.flatMap((g) => g.items.map((item) => ({ group: g, item })));
+
+/** Elemento del menú que corresponde a una ruta: el de la ruta más larga que la contiene (/vuelos/crear gana a /vuelos). */
+export function findNav(pathname: string): { group: NavGroup; item: NavItem } | null {
+  let best: { group: NavGroup; item: NavItem } | null = null;
+  for (const entry of ALL_ITEMS) {
+    const { to } = entry.item;
+    const matches = pathname === to || pathname.startsWith(`${to}/`);
+    if (matches && (!best || to.length > best.item.to.length)) best = entry;
+  }
+  return best;
 }
 
-/** Grupo y elemento de una ruta, para las migas de pan. */
-export function findNav(pathname: string): { group: NavGroup; item: NavItem } | null {
-  for (const group of NAV_GROUPS) {
-    const item = group.items.find((i) => isNavItemActive(i, pathname));
-    if (item) return { group, item };
-  }
-  return null;
+export function isNavItemActive(item: NavItem, pathname: string): boolean {
+  return findNav(pathname)?.item.to === item.to;
 }

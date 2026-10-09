@@ -9,7 +9,7 @@ import { useErrorSummary } from '@/shared/lib/useErrorSummary';
 import { Alert, Button, ErrorSummary, Field, Input, Select, toast } from '@/shared/ui';
 import { FarePriceFields } from './FarePriceFields';
 import { FareWarnings } from './FareWarnings';
-import { EMPTY_PRICES, PRICE_KINDS, pricesChanged, pricesToValues, valuesToPrices } from './farePrices';
+import { EMPTY_PRICES, PRICE_KINDS, pricesChanged, pricesToValues, valuesToPrices } from '@/shared/lib/farePrices';
 import { FareCreateSchema, FareEditSchema } from './schemas';
 
 const f = es.entities.fares.form;

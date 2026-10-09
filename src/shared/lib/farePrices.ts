@@ -1,5 +1,5 @@
 import type { Fare, PassengerPrice, PassengerType } from '@/shared/api';
-import { addMoney } from '@/shared/lib/money';
+import { addMoney } from './money';
 
 /** Tipos de pasajero en el orden del formulario. El adulto es obligatorio; los demás, opcionales. */
 export const PRICE_KINDS: { type: PassengerType; key: 'adult' | 'youth' | 'child' | 'infant'; required: boolean }[] = [
