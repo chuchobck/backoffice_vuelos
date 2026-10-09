@@ -1,40 +1,34 @@
 import type { AdminApi } from './AdminApi';
 import { apiConfig } from './config';
-import { createDemoAdminApi } from './demo/DemoAdminApi';
-import { resetIds } from './demo/ids';
 import { createHttpClient } from './http/client';
-import { getApiMode, subscribeApiMode } from './mode';
 import { createRealAdminApi } from './RealAdminApi';
 import { currentAccessToken } from './authBridge';
 
 const httpClient = createHttpClient({ baseUrl: apiConfig.apiUrl, getAccessToken: currentAccessToken });
-const real = createRealAdminApi(httpClient);
-let demo: AdminApi | null = null;
+let api: AdminApi = createRealAdminApi(httpClient);
+let replaced = false;
 
-// Cada vez que se entra al modo demo se parte de datos de ejemplo nuevos.
-subscribeApiMode(() => {
-  demo = null;
+/** La API que usa la interfaz: siempre la real (HTTP contra /flights/v1). */
+export const adminApi: AdminApi = new Proxy({} as AdminApi, {
+  get: (_target, key) => api[key as keyof AdminApi],
 });
 
-function current(): AdminApi {
-  if (getApiMode() === 'demo') {
-    if (!demo) {
-      resetIds();
-      demo = createDemoAdminApi();
-    }
-    return demo;
-  }
-  return real;
+/**
+ * Punto de inyección para pruebas: reemplaza la implementación por una de prueba. Devuelve una función
+ * que restaura la real. La aplicación en producción nunca la llama.
+ */
+export function setAdminApi(replacement: AdminApi): () => void {
+  const previous = api;
+  api = replacement;
+  replaced = true;
+  return () => {
+    api = previous;
+    replaced = false;
+  };
 }
 
-/** La API que usa la interfaz: delega en la real o en la demo según el modo vigente. */
-export const adminApi: AdminApi = new Proxy({} as AdminApi, {
-  get: (_target, key) => current()[key as keyof AdminApi],
-});
-
-/** Despierta el servidor gratuito de Render en segundo plano (solo con la API real; nunca en demo). */
+/** Despierta el servidor gratuito de Render en segundo plano (con una API de prueba instalada no hay nada que despertar). */
 export function warmUpServer(): void {
-  if (getApiMode() === 'demo') return;
+  if (replaced) return;
   void httpClient.request('GET', '/health', { silent: true }).catch(() => undefined);
 }
-export * from './queries';

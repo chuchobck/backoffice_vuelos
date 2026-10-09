@@ -4,7 +4,8 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { QueryProvider } from '@/app/providers/QueryProvider';
-import { setApiMode } from '@/shared/api';
+import { setAdminApi } from '@/shared/api';
+import { createFakeAdminApi } from '@/test-support/fake-api/FakeAdminApi';
 import { Toaster } from '@/shared/ui';
 import { CountriesPage } from './CountriesPage';
 
@@ -19,9 +20,11 @@ function renderScreen() {
   );
 }
 
-beforeAll(() => setApiMode('demo'));
+beforeAll(() => {
+  setAdminApi(createFakeAdminApi({ latencyMs: 0 }));
+});
 
-describe('Países: tabla con CRUD (modo demo)', () => {
+describe('Países: tabla con CRUD', () => {
   it('lista, crea, da de baja con confirmación, muestra los dados de baja y reactiva', async () => {
     const user = userEvent.setup();
     renderScreen();

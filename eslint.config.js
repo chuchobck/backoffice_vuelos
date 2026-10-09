@@ -46,7 +46,7 @@ const NETWORK_MESSAGE = 'Solo src/shared/api habla con la red. Usa adminApi.';
 
 export default tseslint.config(
   // Los tipos generados desde el contrato no se editan a mano (npm run api:types).
-  { ignores: ['dist', 'coverage', 'node_modules', 'legacy', 'e2e/out', 'src/shared/api/generated'] },
+  { ignores: ['dist', 'dist-e2e', 'coverage', 'node_modules', 'legacy', 'e2e/out', 'src/shared/api/generated'] },
   {
     files: ['src/**/*.{ts,tsx}'],
     extends: [js.configs.recommended, ...tseslint.configs.recommended, jsxA11y.flatConfigs.recommended],

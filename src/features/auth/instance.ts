@@ -13,7 +13,7 @@ function storage(get: () => Storage): StorageLike | null {
 
 /** La sesión de la app: una por pestaña. El cliente HTTP toma de aquí el token de acceso. */
 export const session = new SessionManager({
-  // Delegación perezosa: el modo (real o demo) puede cambiar en el login, después de crear la sesión.
+  // Delegación perezosa: la API se resuelve en cada llamada (las pruebas pueden sustituirla).
   api: {
     login: (c) => adminApi.auth.login(c),
     refresh: (t) => adminApi.auth.refresh(t),

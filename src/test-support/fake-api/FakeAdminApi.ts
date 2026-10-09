@@ -1,25 +1,31 @@
 /**
- * Implementación en memoria de `AdminApi` para el modo demo. Reproduce la forma de las respuestas de
+ * Implementación en memoria de `AdminApi` para pruebas. Reproduce la forma de las respuestas de
  * /flights/v1/admin y sus reglas principales (paginación por cursor, baja lógica, 409 por uso, 422 por
  * referencias, 400 por cuerpo inválido). No hace ninguna llamada de red.
  */
 import type {
   AdminApi, AuthApi, ListQuery, Page, Resource,
-} from '../AdminApi';
+} from '@/shared/api/AdminApi';
 import type {
   AircraftModel, Airline, Airport, City, Country, CreateAircraftModel, CreateAirline, CreateCity, CreateCountry, CreateDeparture, CreateFare,
   CreateFareFamily, CreateFlightNumber, CreateSeatMap, Departure, Fare, FareFamily, FlightNumber, SeatMap, SeatMapSummary, UpdateAircraftModel,
   UpdateAirline, UpdateCity, UpdateCountry, UpdateDeparture, UpdateFare, UpdateFareFamily, UpdateFlightNumber, UpdateSeatMap,
-} from '../contract';
-import { ApiError } from '../errors';
+} from '@/shared/api/contract';
+import { ApiError } from '@/shared/api/errors';
 import { nextUuid } from './ids';
-import { buildSeed, summarizeCabins, type AirportRow, type DemoState } from './seed';
+import { buildSeed, summarizeCabins, type AirportRow, type FakeState } from './seed';
 
-export interface DemoOptions {
+export interface FakeOptions {
   now?: () => Date;
   /** Espera simulada por llamada, en ms (0 en las pruebas). */
   latencyMs?: number;
 }
+
+/** Cuentas de prueba (no son credenciales reales): una con permiso de administración y una sin él. */
+export const FAKE_ACCOUNTS = {
+  admin: { email: 'admin@quinde.test', password: 'prueba-admin-123', scopes: ['flights:admin'] },
+  customer: { email: 'cliente@quinde.test', password: 'prueba-cliente-123', scopes: [] as string[] },
+} as const;
 
 function problem(status: number, detail: string, params: { name: string; reason: string }[] = []): ApiError {
   return new ApiError({
@@ -63,15 +69,15 @@ interface Spec<Row extends Active, Out, C, U, D = Out> {
   noun: string;
 }
 
-export function createDemoAdminApi(options: DemoOptions = {}): AdminApi {
+export function createFakeAdminApi(options: FakeOptions = {}): AdminApi {
   const now = options.now ?? (() => new Date());
   const latency = options.latencyMs ?? 80;
   const wait = () => (latency > 0 ? new Promise<void>((r) => setTimeout(r, latency)) : Promise.resolve());
-  const s: DemoState = buildSeed(now());
-  let email = 'admin@demo.local';
+  const s: FakeState = buildSeed(now());
+  let account: { email: string; scopes: readonly string[] } = FAKE_ACCOUNTS.admin;
   // Tokens únicos como los reales: el SessionManager recuerda los ya rotados y no debe confundirlos tras recargar.
   const random = () => (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`);
-  const issueTokens = () => ({ accessToken: `demo.access.${random()}`, refreshToken: `demo-refresh-${random()}`, expiresIn: 900, scope: 'flights:admin' });
+  const issueTokens = () => ({ accessToken: `fake.access.${random()}`, refreshToken: `fake-refresh-${random()}`, expiresIn: 900, scope: account.scopes.join(' ') });
 
   const asAirport = (r: AirportRow): Airport => {
     const c = s.cities.find((x) => x.id === r.cityId);
@@ -362,12 +368,14 @@ export function createDemoAdminApi(options: DemoOptions = {}): AdminApi {
   const auth: AuthApi = {
     async login(c) {
       await wait();
-      email = c.email;
+      const found = Object.values(FAKE_ACCOUNTS).find((a) => a.email === c.email && a.password === c.password);
+      if (!found) throw new ApiError({ status: 401 });
+      account = found;
       return issueTokens();
     },
     async refresh(rt) {
       await wait();
-      if (!rt.startsWith('demo-refresh-')) throw new ApiError({ status: 401, code: 'VALIDATION_FAILED' });
+      if (!rt.startsWith('fake-refresh-')) throw new ApiError({ status: 401, code: 'VALIDATION_FAILED' });
       return issueTokens();
     },
     async logout() {
@@ -375,7 +383,7 @@ export function createDemoAdminApi(options: DemoOptions = {}): AdminApi {
     },
     async me() {
       await wait();
-      return { id: '00000000-0000-4000-8000-00000000ad01', email, roles: ['administrador'], scopes: ['flights:admin'], createdAt: now().toISOString() };
+      return { id: '00000000-0000-4000-8000-00000000ad01', email: account.email, roles: account.scopes.length ? ['administrador'] : ['cliente'], scopes: [...account.scopes], createdAt: now().toISOString() };
     },
   };
 

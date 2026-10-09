@@ -14,7 +14,6 @@ Qué permite hacer:
   aerolíneas, equipos, familias tarifarias, mapas de asientos (con alta), ciudades y países.
 - **Panel** con conteos reales, **búsqueda en todas las páginas**, orden por columna, detalle de cada registro y **avisos de
   cordura** al editar tarifas (por ejemplo, un total de 4128.00 en un vuelo nacional).
-- **Modo demo**: datos de ejemplo locales con la forma exacta de las respuestas reales, sin ninguna llamada de red.
 
 > Reservas, Auditoría y Administradores aparecen en el menú como **"Pendiente en la API"**: el backend todavía no tiene
 > esos endpoints de administración. No se simulan. Ver [Endpoints que faltan](#endpoints-que-faltan-en-el-backend).
@@ -40,7 +39,7 @@ src/
   pages/      una página por ruta; SOLO arma piezas (Page + la pantalla de un módulo)
   features/   un módulo funcional por carpeta (ver abajo); un módulo no importa de otro
   shared/
-    api/      cliente HTTP (único fetch), AdminApi + RealAdminApi + DemoAdminApi, errores, TanStack Query, tipos generados
+    api/      cliente HTTP (único fetch), AdminApi + RealAdminApi, errores, TanStack Query, tipos generados
     crud/     pantalla genérica de un recurso (tabla, filtros, formularios, detalle, baja/reactivación)
     i18n/     TODOS los textos (es.ts)
     lib/      dinero, fechas y zonas, validadores zod, avisos de tarifa, utilidades
@@ -59,7 +58,7 @@ Reglas (las revisa `npm run lint`, ver `eslint.config.js`):
 - Todos los textos en `shared/i18n/es.ts`; los colores solo con tokens (`tailwind.config.ts` reemplaza la paleta);
   un componente por archivo; las rutas nunca como texto suelto (`src/app/routes.ts`).
 - La interfaz conoce solo la interfaz `AdminApi`; hay dos implementaciones con la misma forma de respuestas:
-  `RealAdminApi` (HTTP contra `/flights/v1`) y `DemoAdminApi` (en memoria).
+  `RealAdminApi` (HTTP contra `/flights/v1`). Las pruebas la sustituyen por `FakeAdminApi` (`src/test-support/`, en memoria), que nunca se incluye en la compilación de producción.
 - Los tipos salen del OpenAPI del backend (`contracts/backend-openapi.json` → `npm run api:types` →
   `src/shared/api/generated/backend.ts`, no se edita a mano). Procedencia en [`contracts/PROCEDENCIA.md`](contracts/PROCEDENCIA.md).
 
@@ -78,35 +77,32 @@ npm ci
 npm run dev        # http://localhost:5173
 ```
 
-### Sin API (modo demo)
+### Contra tu backend local (sin CORS)
 
-En el login marca **Modo demo**, escribe cualquier correo con forma válida y cualquier contraseña. Todo funciona con datos de
-ejemplo en memoria (se reinician al recargar la pestaña) y **no se hace ninguna llamada de red**. Una insignia "MODO DEMO" y un
-banner están siempre visibles.
+En desarrollo (`npm run dev`) el navegador llama a su propio origen (`/flights/v1`) y el servidor de Vite reenvía `/flights` al
+backend indicado por `BACKEND_URL` (por defecto `http://localhost:3000`, el puerto por defecto del backend). `public/config.js`
+(con la URL de producción) **no se usa** en desarrollo, así que no hay CORS ni hace falta tocar `CORS_ORIGINS`.
 
-### Con la API real (proxy de desarrollo, sin CORS)
+Si tu backend corre en otro puerto, copia `.env.example` a `.env.local` (ignorado por git) y ajusta:
 
-`vite.config.ts` reenvía `/flights` hacia `https://quinde-vuelos-api.onrender.com` (`changeOrigin`). Para usarlo, en
-`public/config.js` pon una URL relativa:
-
-```js
-window.BACKOFFICE_CONFIG = { API_URL: "/flights/v1" };
+```bash
+BACKEND_URL=http://localhost:4000
 ```
 
-Con eso el navegador habla con el mismo origen y no hace falta tocar `CORS_ORIGINS`. Ingresa con tu cuenta de administrador
-(el backend la siembra con `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`; **nunca** pongas credenciales en el código, el README
-ni los commits). Si no usas el proxy, deja la URL absoluta y agrega `http://localhost:5173` a `CORS_ORIGINS` del backend.
+Ingresa con tu cuenta de administrador (el backend la siembra con `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`; **nunca** pongas
+credenciales en el código, el README ni los commits). Para apuntar el desarrollo a otro servidor (por ejemplo el de Render) basta
+con poner esa URL en `BACKEND_URL`.
 
 ### Scripts
 
 | Script | Qué hace |
 | --- | --- |
-| `npm run dev` | Servidor de desarrollo (con el proxy `/flights`) |
+| `npm run dev` | Servidor de desarrollo (proxy `/flights` → `BACKEND_URL`) |
 | `npm run build` | `tsc -b` + `vite build` → `dist/` |
 | `npm run typecheck` | TypeScript estricto |
 | `npm run lint` | ESLint 9 (typescript-eslint, react-hooks, jsx-a11y, import-x con las reglas de arquitectura) |
 | `npm test` | Vitest + Testing Library |
-| `npm run e2e` | Compila, levanta `vite preview` y corre Playwright/Chromium en **modo demo** (ver [Pruebas](#pruebas)) |
+| `npm run e2e` | Compila una versión de pruebas en `dist-e2e/`, levanta `vite preview` y corre Playwright/Chromium (ver [Pruebas](#pruebas)) |
 | `npm run api:types` | Regenera los tipos desde `contracts/backend-openapi.json` |
 
 ## Configuración de la URL de la API (`config.js`)
@@ -248,7 +244,7 @@ Otras ausencias que se notan en el panel: no hay endpoint de **monedas** (la mon
   pestañas, cierre), integración cliente + sesión (401 → una renovación → reintento), generación de filas de mapas, plan y ejecución
   del asistente (reintento de lo pendiente, 429), y componentes: asistente completo, tabla con baja y reactivación, avisos de tarifa,
   ruta protegida, pantallas pendientes y panel.
-- **E2E** (`npm run e2e`, Playwright + Chromium, **modo demo**, sin red externa): login, asistente completo, un CRUD, 320/768/1280 px (sin
+- **E2E** (`npm run e2e`, Playwright + Chromium contra una API de prueba en memoria, sin red externa): login, asistente completo, un CRUD, 320/768/1280 px (sin
   scroll horizontal de página y objetivos de 44 px), recorrido con teclado (saltar al contenido, foco al h1, diálogos con foco atrapado y
   Esc) y **axe** (WCAG 2.2 AA) en claro y oscuro. Las capturas quedan en `e2e/out/` (ignorado por git). El script usa el Chromium que
   tenga Playwright; en entornos con `PLAYWRIGHT_BROWSERS_PATH` apunta ahí.
@@ -257,7 +253,7 @@ Otras ausencias que se notan en el panel: no hay endpoint de **monedas** (la mon
 ## Decisiones y diferencias con el contrato
 
 - **Un solo contrato**: los tipos salen del OpenAPI del backend; las reglas que ese documento no declara se tomaron de los servicios
-  del backend y están cubiertas por el modo demo (que las reproduce) y por las pruebas.
+  del backend y están cubiertas por la API de prueba (que las reproduce) y por las pruebas.
 - **Búsqueda**: la API no filtra por texto. "Buscar" filtra las filas de la página; "Buscar en todas las páginas" recorre hasta 1000
   registros e indica cuántos revisó (y si hay más sin revisar). El mismo tope usan los conteos del panel: solo se muestra "1000+" si
   se pasa del tope.
@@ -270,5 +266,5 @@ Otras ausencias que se notan en el panel: no hay endpoint de **monedas** (la mon
   lo que falta; ante un 429 espera el `Retry-After` (máx. 65 s) y reintenta hasta 3 veces.
 - **Zona horaria por aeropuerto** (mejora sobre el HTML anterior, que fijaba UTC−5): una llegada a Galápagos se escribe en hora de Galápagos.
 - **Sin fuentes externas**: tipografía del sistema (sin Google Fonts), así que el sitio no depende de terceros ni de la red.
-- **El modo demo no toca la red**: el "calentamiento" del servidor de Render solo ocurre en modo real, al empezar a escribir en el login.
+- **API de prueba solo en pruebas**: `FakeAdminApi` vive en `src/test-support/`; la compilación de producción no la incluye (el E2E la activa con `VITE_E2E=true` y una carpeta de salida aparte).
 - **`legacy/`** conserva el `index.html` y el `config.js` anteriores como referencia; no se publican.

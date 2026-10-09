@@ -3,12 +3,15 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { QueryProvider } from '@/app/providers/QueryProvider';
-import { setApiMode } from '@/shared/api';
+import { setAdminApi } from '@/shared/api';
+import { createFakeAdminApi } from '@/test-support/fake-api/FakeAdminApi';
 import { DashboardPage } from './DashboardPage';
 
-beforeAll(() => setApiMode('demo'));
+beforeAll(() => {
+  setAdminApi(createFakeAdminApi({ latencyMs: 0 }));
+});
 
-describe('Panel inicial (modo demo)', () => {
+describe('Panel inicial', () => {
   it('muestra el conteo real de cada recurso (recorre todas las páginas, no solo la primera)', async () => {
     render(
       <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>

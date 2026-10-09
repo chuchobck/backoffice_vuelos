@@ -1,6 +1,6 @@
 import type {
   AircraftModel, Airline, CabinClass, City, Country, Departure, Fare, FareFamily, FlightNumber, SeatMap, SeatRow,
-} from '../contract';
+} from '@/shared/api/contract';
 import { nextUuid } from './ids';
 
 /** Fila interna de un aeropuerto: la ciudad se resuelve al responder (cityName y country). */
@@ -11,7 +11,7 @@ export interface AirportRow {
   active: boolean;
 }
 
-export interface DemoState {
+export interface FakeState {
   countries: Country[];
   cities: City[];
   airports: AirportRow[];
@@ -71,7 +71,7 @@ function localToUtc(day: string, hhmm: string, offsetHours: number): string {
   return new Date(Date.UTC(y!, m! - 1, d!, hh! + offsetHours, mm!)).toISOString().replace('.000Z', 'Z');
 }
 
-export function buildSeed(now: Date): DemoState {
+export function buildSeed(now: Date): FakeState {
   const ec: Country = { code: 'EC', iso3: 'ECU', name: 'Ecuador', active: true };
   const city = (name: string, tz = 'America/Guayaquil'): City => ({ id: nextUuid(), country: 'EC', name, timeZone: tz, active: true });
   const cities = [
@@ -142,7 +142,7 @@ export function buildSeed(now: Date): DemoState {
         cabins: sm.cabins.map((c) => ({ cabinClass: c.cabinClass, totalSeats: c.seats, availableSeats: c.seats })), active: true,
       };
       departures.push(dp);
-      if (k > 1) continue; // tarifas solo en la primera salida de cada vuelo para mantener ligera la demo
+      if (k > 1) continue; // tarifas solo en la primera salida de cada vuelo para mantener ligera el conjunto
       for (const [code, factor, cabin] of [['BASIC', 1, 'ECONOMY'], ['CLASSIC', 1.2, 'ECONOMY'], ['FLEX', 1.55, 'ECONOMY'], ['BUSINESS_FLEX', 2.6, 'BUSINESS']] as const) {
         const fm = fareFamilies.find((f) => f.airline === al && f.code === code)!;
         if (!dp.cabins.some((c) => c.cabinClass === cabin)) continue;

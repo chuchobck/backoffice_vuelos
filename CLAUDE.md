@@ -16,7 +16,7 @@ jsx-a11y, import-x). E2E con Playwright (`npm run e2e`).
 - `pages` usa `app`, `features` y `shared`. `features` usa `shared` y solo `app/routes.ts`. `shared` no importa de nadie.
 - Un módulo de `features` no importa de otro; lo común sube a `shared`. Desde fuera se importa por su `index.ts`.
 - Solo `shared/api` hace red; el único `fetch` está en `shared/api/http/client.ts`. La UI conoce solo `AdminApi`
-  (implementaciones `RealAdminApi` y `DemoAdminApi`). **Nunca se inventan endpoints.**
+  (implementación `RealAdminApi`; las pruebas inyectan `FakeAdminApi` de `src/test-support/` con `setAdminApi`). **Nunca se inventan endpoints.**
 - Todos los textos en `shared/i18n/es.ts`. Colores solo con tokens (Tailwind los restringe). Un componente por archivo.
 - Rutas: nunca como texto suelto; `paths`/`routes` de `src/app/routes.ts`.
 
@@ -29,7 +29,7 @@ jsx-a11y, import-x). E2E con Playwright (`npm run e2e`).
 - Detalle técnico de un error (`detail`) nunca se muestra: se mapea a `shared/i18n` (`shared/api/errors.ts`).
 - Sesión: access token solo en memoria; refresh en `sessionStorage`; una sola renovación a la vez
   (promesa compartida + Web Locks + BroadcastChannel). La interfaz nunca envía un rol.
-- El modo demo no hace ninguna llamada de red.
+- Desarrollo local: `npm run dev` usa el proxy `/flights` → `BACKEND_URL` (ver README). Ningún dato ni texto de ejemplo en producción.
 - Reservas, Auditoría y Administradores no tienen endpoint admin: son pantallas "Pendiente en la API", no se simulan.
 
 ## Accesibilidad (WCAG 2.2 AA)

@@ -14,7 +14,7 @@
     "test": "vitest run",
     "lint": "eslint . --max-warnings 0",
     "api:types": "openapi-typescript contracts/backend-openapi.json --default-non-nullable false -o src/shared/api/generated/backend.ts",
-    "e2e": "npm run build && node e2e/run.mjs"
+    "e2e": "node e2e/run.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

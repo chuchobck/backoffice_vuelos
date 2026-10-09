@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { ServerWakingNotice, Toaster } from '@/shared/ui';
-import { DemoBanner } from './DemoBanner';
 import { Header } from './Header';
 import { SessionNotices } from './SessionNotices';
 import { focusElement, MAIN_ID, SkipLink } from './SkipLink';
@@ -31,7 +30,6 @@ export function RootLayout() {
     <div className="flex min-h-dvh flex-col">
       <SkipLink />
       <Header />
-      <DemoBanner />
       <ServerWakingNotice />
       <SessionNotices />
       <div className="flex min-h-0 flex-1">

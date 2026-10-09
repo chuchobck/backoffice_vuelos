@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { ApiError, createDemoAdminApi } from '@/shared/api';
+import { ApiError } from '@/shared/api';
+import { createFakeAdminApi } from '@/test-support/fake-api/FakeAdminApi';
 
 import { emptyResult, executePlan, StepError, type CreationApi } from './execute';
 import { buildPlan } from './plan';
@@ -34,43 +35,43 @@ function wizardState(familyIds: { basic: string; classic: string }): WizardState
 }
 
 async function setup() {
-  const demo = createDemoAdminApi({ now: () => NOW, latencyMs: 0 });
-  const families = (await demo.fareFamilies.list({ limit: 50, filters: { airline: 'AV' } })).items;
-  const maps = (await demo.seatMaps.list({ limit: 50, filters: { airline: 'AV', aircraftModel: '320' } })).items;
+  const fake = createFakeAdminApi({ now: () => NOW, latencyMs: 0 });
+  const families = (await fake.fareFamilies.list({ limit: 50, filters: { airline: 'AV' } })).items;
+  const maps = (await fake.seatMaps.list({ limit: 50, filters: { airline: 'AV', aircraftModel: '320' } })).items;
   const state = wizardState({ basic: families.find((f) => f.code === 'BASIC')!.id, classic: families.find((f) => f.code === 'CLASSIC')!.id });
   state.seatMap = { id: maps[0]!.id, name: maps[0]!.name, cabins: maps[0]!.cabins };
-  return { demo, state, plan: buildPlan(state, () => 'America/Guayaquil') };
+  return { fake, state, plan: buildPlan(state, () => 'America/Guayaquil') };
 }
 
-describe('ejecución del asistente (contra la API de demostración)', () => {
+describe('ejecución del asistente (contra la API de prueba)', () => {
   it('crea el número de vuelo, una salida por fecha y las tarifas de cada salida', async () => {
-    const { demo, plan } = await setup();
+    const { fake, plan } = await setup();
     const say = vi.fn();
-    const result = await executePlan(plan, demo, emptyResult(), { say });
+    const result = await executePlan(plan, fake, emptyResult(), { say });
     expect(result.done).toBe(true);
     expect(result.flightCreated).toBe(true);
     expect(result.departures).toHaveLength(3);
     expect(result.departures.every((d) => d.id && Object.keys(d.fares).length === 2)).toBe(true);
-    const deps = await demo.departures.list({ limit: 50, filters: { flightNumber: 'AV1999' } });
+    const deps = await fake.departures.list({ limit: 50, filters: { flightNumber: 'AV1999' } });
     expect(deps.items).toHaveLength(3);
-    const fares = await demo.fares.list({ limit: 50, filters: { departureId: result.departures[0]!.id! } });
+    const fares = await fake.fares.list({ limit: 50, filters: { departureId: result.departures[0]!.id! } });
     expect(fares.items.map((f) => f.fareBrand).sort()).toEqual(['BASIC', 'CLASSIC']);
     expect(say).toHaveBeenCalled();
   });
 
   it('si algo falla a medias, al reintentar crea SOLO lo que falta (no duplica)', async () => {
-    const { demo, plan } = await setup();
+    const { fake, plan } = await setup();
     // La segunda tarifa de la segunda salida falla una vez con un 500.
     let calls = 0;
     const flaky: CreationApi = {
-      flightNumbers: demo.flightNumbers,
-      departures: demo.departures,
+      flightNumbers: fake.flightNumbers,
+      departures: fake.departures,
       fares: {
-        ...demo.fares,
+        ...fake.fares,
         create: async (body) => {
           calls++;
           if (calls === 4) throw new ApiError({ status: 500 });
-          return demo.fares.create(body);
+          return fake.fares.create(body);
         },
       },
     };
@@ -83,27 +84,27 @@ describe('ejecución del asistente (contra la API de demostración)', () => {
 
     await executePlan(plan, flaky, result, { say: () => undefined });
     expect(result.done).toBe(true);
-    const deps = await demo.departures.list({ limit: 50, filters: { flightNumber: 'AV1999' } });
+    const deps = await fake.departures.list({ limit: 50, filters: { flightNumber: 'AV1999' } });
     expect(deps.items).toHaveLength(3);
     for (const d of result.departures) {
-      expect((await demo.fares.list({ limit: 50, filters: { departureId: d.id! } })).items).toHaveLength(2);
+      expect((await fake.fares.list({ limit: 50, filters: { departureId: d.id! } })).items).toHaveLength(2);
     }
   });
 
   it('ante un 429 espera lo que diga Retry-After y reintenta', async () => {
-    const { demo, plan } = await setup();
+    const { fake, plan } = await setup();
     let failed = false;
     const sleeps: number[] = [];
     const limited: CreationApi = {
-      ...demo,
+      ...fake,
       departures: {
-        ...demo.departures,
+        ...fake.departures,
         create: async (body) => {
           if (!failed) {
             failed = true;
             throw new ApiError({ status: 429, retryAfter: 7 });
           }
-          return demo.departures.create(body);
+          return fake.departures.create(body);
         },
       },
     };
@@ -115,9 +116,9 @@ describe('ejecución del asistente (contra la API de demostración)', () => {
   });
 
   it('un 422 (regla de negocio) detiene la creación y dice qué paso falló, sin el detail técnico', async () => {
-    const { demo, plan } = await setup();
+    const { fake, plan } = await setup();
     const bad = { ...plan, departures: plan.departures.map((d) => ({ ...d, body: { ...d.body, scheduledDeparture: '2020-01-01T10:00:00Z', scheduledArrival: '2020-01-01T11:00:00Z' } })) };
-    const error = await executePlan(bad, demo, emptyResult(), { say: () => undefined }).catch((e: unknown) => e);
+    const error = await executePlan(bad, fake, emptyResult(), { say: () => undefined }).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(StepError);
     const text = (error as StepError).userMessage;
     expect(text).toContain('Salida del');

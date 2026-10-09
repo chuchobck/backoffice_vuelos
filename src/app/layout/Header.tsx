@@ -1,17 +1,15 @@
 import { LogOut, Plane } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/features/auth';
-import { useIsDemo } from '@/shared/api';
 import { es } from '@/shared/i18n';
 import { Button } from '@/shared/ui';
 import { routes } from '../routes';
 import { MobileMenu } from './MobileMenu';
 import { ThemeToggle } from './ThemeToggle';
 
-/** Barra superior fija: marca, insignia de modo demo, usuario y cierre de sesión. */
+/** Barra superior fija: marca, usuario y cierre de sesión. */
 export function Header() {
   const { user, logout } = useAuth();
-  const demo = useIsDemo();
   const navigate = useNavigate();
   return (
     <header className="sidebar-scope sticky top-0 z-40 flex min-h-14 flex-wrap items-center gap-2 bg-primary px-4 py-1 text-primary-foreground dark:bg-sidebar dark:text-sidebar-foreground">
@@ -21,7 +19,6 @@ export function Header() {
         <span>{es.app.name}</span>
       </p>
       <div className="ml-auto flex flex-wrap items-center gap-2">
-        {demo ? <span className="rounded-full bg-warning-tint px-3 py-1 text-xs font-bold text-warning">{es.demo.badge}</span> : null}
         {user ? <span className="hidden max-w-60 truncate text-sm sm:inline" title={user.email}>{user.email}</span> : null}
         <ThemeToggle />
         {user ? (

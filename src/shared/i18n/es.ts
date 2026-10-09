@@ -99,15 +99,6 @@ export const es = {
     userMenu: 'Cuenta',
   },
 
-  demo: {
-    badge: 'MODO DEMO',
-    bannerTitle: 'Modo demo:',
-    bannerText: 'los datos son de ejemplo y viven solo en esta pestaña. No se hace ninguna llamada a la API real.',
-    switchLabel: 'Modo demo',
-    switchHint: 'Usa datos de ejemplo locales y no se conecta con la API. Con el modo demo apagado se usa la API real.',
-    anyPassword: 'En modo demo sirve cualquier contraseña.',
-  },
-
   auth: {
     title: 'Iniciar sesión',
     lead: 'Ingresa con tu cuenta de administrador.',
@@ -142,7 +133,7 @@ export const es = {
 
   errors: {
     unknown: 'Ocurrió un error inesperado. Inténtalo de nuevo.',
-    network: 'No se pudo conectar con la API. Revisa tu conexión o prueba el modo demo.',
+    network: 'No se pudo conectar con la API. Revisa tu conexión e inténtalo de nuevo.',
     timeout: 'La API tardó demasiado en responder. Inténtalo de nuevo.',
     notConnected: 'Esta función todavía no está conectada con la API.',
     badRequest400: 'Los datos enviados no son válidos.',

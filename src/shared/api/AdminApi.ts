@@ -1,6 +1,6 @@
 /**
  * Contrato de datos de la interfaz: la UI solo conoce `AdminApi`. Tiene dos implementaciones con la
- * misma forma de respuestas: `RealAdminApi` (HTTP contra /flights/v1) y `DemoAdminApi` (en memoria,
+ * misma forma de respuestas: `RealAdminApi` (HTTP contra /flights/v1) y `FakeAdminApi` (solo pruebas, en memoria,
  * sin ninguna llamada de red).
  */
 import type {

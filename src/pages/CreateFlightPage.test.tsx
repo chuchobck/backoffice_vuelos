@@ -4,11 +4,14 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { QueryProvider } from '@/app/providers/QueryProvider';
-import { setApiMode } from '@/shared/api';
+import { setAdminApi } from '@/shared/api';
+import { createFakeAdminApi } from '@/test-support/fake-api/FakeAdminApi';
 import { addDaysToDate, todayIn } from '@/shared/lib/dates';
 import { CreateFlightPage } from './CreateFlightPage';
 
-beforeAll(() => setApiMode('demo'));
+beforeAll(() => {
+  setAdminApi(createFakeAdminApi({ latencyMs: 0 }));
+});
 
 const future = (days: number) => addDaysToDate(todayIn('America/Guayaquil'), days);
 
@@ -25,7 +28,7 @@ function renderWizard() {
 const next = (user: ReturnType<typeof userEvent.setup>) => user.click(screen.getByRole('button', { name: 'Siguiente' }));
 const alerts = () => screen.queryAllByRole('alert').map((a) => a.textContent ?? '');
 
-describe('Asistente "Crear vuelo" (modo demo)', () => {
+describe('Asistente "Crear vuelo"', () => {
   it('recorre los 5 pasos con validaciones y crea el vuelo, las salidas y las tarifas', async () => {
     const user = userEvent.setup();
     renderWizard();

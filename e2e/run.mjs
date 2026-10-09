@@ -1,12 +1,14 @@
 /**
- * Pruebas de extremo a extremo (Playwright + Chromium) en MODO DEMO: nunca llaman a la API real.
+ * Pruebas de extremo a extremo (Playwright + Chromium). La aplicación se compila con VITE_E2E=true en
+ * `dist-e2e/` (nunca en `dist/`): esa compilación usa la API de prueba en memoria (src/test-support) y
+ * nunca llama a la API real ni a ninguna red.
  *
  *   npm run e2e          (compila, levanta `vite preview` y corre todo)
  *
  * Cubre: login, asistente de crear vuelo completo, un CRUD, 320 / 768 / 1280 px (sin scroll horizontal
  * de página ni objetivos menores de 44 px), recorrido con teclado, modo oscuro y accesibilidad (axe).
  */
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { mkdirSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { chromium } from 'playwright';
@@ -40,10 +42,24 @@ function assert(condition, message) {
 }
 const eq = (actual, expected, what) => assert(JSON.stringify(actual) === JSON.stringify(expected), `${what}: esperado ${JSON.stringify(expected)}, recibido ${JSON.stringify(actual)}`);
 
+const ADMIN = { email: 'admin@quinde.test', password: 'prueba-admin-123' };
+const CUSTOMER = { email: 'cliente@quinde.test', password: 'prueba-cliente-123' };
+const DIST = 'dist-e2e';
+
+function build() {
+  const viteBin = new URL('../node_modules/vite/bin/vite.js', import.meta.url).pathname;
+  const run = spawnSync(process.execPath, [viteBin, 'build', '--outDir', DIST, '--emptyOutDir'], {
+    stdio: 'inherit',
+    env: { ...process.env, VITE_E2E: 'true' },
+  });
+  if (run.status !== 0) throw new Error('La compilación de pruebas falló');
+}
+
 async function startServer() {
+  build();
   // Se lanza el binario de vite con node (no con npx): así `server.kill()` termina el proceso real y no queda nada corriendo.
   const viteBin = new URL('../node_modules/vite/bin/vite.js', import.meta.url).pathname;
-  const server = spawn(process.execPath, [viteBin, 'preview', '--port', String(PORT), '--strictPort'], { stdio: 'ignore' });
+  const server = spawn(process.execPath, [viteBin, 'preview', '--outDir', DIST, '--port', String(PORT), '--strictPort'], { stdio: 'ignore' });
   for (let i = 0; i < 60; i++) {
     try {
       const res = await fetch(BASE);
@@ -75,11 +91,10 @@ async function newPage(browser, viewport, externalRequests = []) {
   return { context, page, errors };
 }
 
-async function loginDemo(page, path = '/panel') {
+async function loginAdmin(page, path = '/panel') {
   await page.goto(BASE + path);
-  await page.getByLabel('Modo demo').check();
-  await page.getByLabel('Correo electrónico').fill('admin@demo.local');
-  await page.getByLabel(/^Contraseña/).fill('x');
+  await page.getByLabel('Correo electrónico').fill(ADMIN.email);
+  await page.getByLabel(/^Contraseña/).fill(ADMIN.password);
   await page.getByRole('button', { name: 'Iniciar sesión' }).click();
   await page.locator('header').first().waitFor();
 }
@@ -102,11 +117,10 @@ async function main() {
   const external = [];
   try {
     /* ---------------------------------------------------------------- Login y panel */
-    group('Login (API real, sin ingresar) y modo demo');
+    group('Login y sesión');
     {
-      // Con la API real no se puede ingresar (no hay credenciales): se prueba solo lo que hace la interfaz.
-      const real = await newPage(browser, { width: 1280, height: 900 }, []);
-      const page = real.page;
+      const guest = await newPage(browser, { width: 1280, height: 900 }, external);
+      const page = guest.page;
       await check('una ruta protegida lleva a /ingresar con ?volver=', async () => {
         await page.goto(`${BASE}/tarifas`);
         await page.waitForURL(/\/ingresar\?volver=%2Ftarifas/);
@@ -122,27 +136,31 @@ async function main() {
         eq(await page.getByLabel('Correo electrónico').inputValue(), 'esto-no-es-un-correo', 'no borra el correo');
         await page.screenshot({ path: `${OUT}login-errores.png` });
       });
-      await check('con la API real, una contraseña válida pero sin conexión da un mensaje claro (sin detail técnico)', async () => {
-        await page.getByLabel('Correo electrónico').fill('admin@quinde.example');
+      await check('una contraseña incorrecta da un mensaje genérico (401)', async () => {
+        await page.getByLabel('Correo electrónico').fill(ADMIN.email);
         await page.getByLabel(/^Contraseña/).fill('una frase larga y fácil');
         await page.getByRole('button', { name: 'Iniciar sesión' }).click();
-        await page.getByText(/No se pudo conectar con la API/).waitFor();
+        await page.getByText('Correo o contraseña incorrectos.').waitFor();
+      });
+      await check('una cuenta sin permiso de administrador es rechazada (403) y no queda sesión', async () => {
+        await page.getByLabel('Correo electrónico').fill(CUSTOMER.email);
+        await page.getByLabel(/^Contraseña/).fill(CUSTOMER.password);
+        await page.getByRole('button', { name: 'Iniciar sesión' }).click();
+        await page.getByText(/no tiene permiso de administrador/).waitFor();
+        assert(/\/ingresar/.test(page.url()), 'debe seguir en el login');
       });
       await check('accesibilidad del login (axe)', () => axeScan(page, 'login'));
-      await real.context.close();
+      await guest.context.close();
 
-      const demo = await newPage(browser, { width: 1280, height: 900 }, external);
-      const dp = demo.page;
-      await check('con el modo demo (elegido primero) entra, vuelve a la ruta pedida y muestra insignia y banner', async () => {
+      const session = await newPage(browser, { width: 1280, height: 900 }, external);
+      const dp = session.page;
+      await check('un administrador entra y vuelve a la ruta pedida', async () => {
         await dp.goto(`${BASE}/tarifas`);
         await dp.waitForURL(/\/ingresar/);
-        await dp.getByLabel('Modo demo').check();
-        await dp.getByLabel('Correo electrónico').fill('admin@demo.local');
-        await dp.getByLabel(/^Contraseña/).fill('x');
+        await dp.getByLabel('Correo electrónico').fill(ADMIN.email);
+        await dp.getByLabel(/^Contraseña/).fill(ADMIN.password);
         await dp.getByRole('button', { name: 'Iniciar sesión' }).click();
         await dp.waitForURL('**/tarifas');
-        await dp.getByText('MODO DEMO').first().waitFor();
-        await dp.getByText(/no se hace ninguna llamada a la API real/i).waitFor();
       });
       await check('el panel muestra conteos reales de todas las páginas', async () => {
         await dp.getByRole('navigation', { name: 'Navegación principal' }).getByRole('link', { name: 'Panel' }).click();
@@ -150,7 +168,7 @@ async function main() {
         await dp.getByRole('link', { name: 'Tarifas 39 activos' }).waitFor();
         await dp.screenshot({ path: `${OUT}panel.png`, fullPage: true });
       });
-      await check('recargar en modo demo restaura la sesión sin pedir ingreso', async () => {
+      await check('recargar restaura la sesión sin pedir ingreso', async () => {
         await dp.reload();
         await dp.getByRole('heading', { level: 1, name: 'Panel' }).waitFor();
       });
@@ -158,18 +176,18 @@ async function main() {
         await dp.getByRole('button', { name: 'Cerrar sesión' }).click();
         await dp.waitForURL(/\/ingresar/);
       });
-      await check('el modo demo no hizo ninguna llamada de red', async () => {
+      await check('no se hizo ninguna llamada de red externa', async () => {
         eq(external, [], 'peticiones externas');
       });
-      await check('sin errores en la consola', async () => eq(demo.errors, [], 'errores'));
-      await demo.context.close();
+      await check('sin errores en la consola', async () => eq(session.errors, [], 'errores'));
+      await session.context.close();
     }
 
     /* ---------------------------------------------------------------- Asistente */
     group('Asistente "Crear vuelo"');
     {
       const { page, errors } = await newPage(browser, { width: 1280, height: 1000 }, external);
-      await loginDemo(page, '/vuelos/crear');
+      await loginAdmin(page, '/vuelos/crear');
       await check('crea el vuelo completo (5 pasos, validaciones, vista previa, creación y enlace a la lista)', async () => {
         await page.getByRole('heading', { name: 'Paso 1: Ruta' }).waitFor();
         await page.getByRole('button', { name: 'Siguiente' }).click();
@@ -226,7 +244,7 @@ async function main() {
     group('CRUD de aeropuertos');
     {
       const { page, errors } = await newPage(browser, { width: 1280, height: 900 }, external);
-      await loginDemo(page, '/aeropuertos');
+      await loginAdmin(page, '/aeropuertos');
       const dialog = page.getByRole('dialog');
       await check('crear (con validación), buscar, ordenar y editar', async () => {
         await page.locator('tbody tr td').first().waitFor();
@@ -279,7 +297,7 @@ async function main() {
     const pages = ['/panel', '/vuelos', '/vuelos/crear', '/numeros-de-vuelo', '/rutas', '/tarifas', '/aeropuertos', '/familias-tarifarias', '/mapas-de-asientos', '/reservas', '/auditoria', '/administradores'];
     for (const width of [320, 768, 1280]) {
       const { page, errors } = await newPage(browser, { width, height: 800 }, external);
-      await loginDemo(page, '/panel');
+      await loginAdmin(page, '/panel');
       await check(`${width}px: ninguna pantalla tiene scroll horizontal de página`, async () => {
         const bad = [];
         for (const path of pages) {
@@ -336,13 +354,11 @@ async function main() {
     {
       const { page } = await newPage(browser, { width: 1280, height: 900 }, external);
       await page.goto(BASE + '/ingresar');
-      await check('ingresar solo con teclado (modo demo)', async () => {
-        await page.getByLabel('Modo demo').focus();
-        await page.keyboard.press('Space');
+      await check('ingresar solo con teclado', async () => {
+        await page.getByLabel('Correo electrónico').focus();
+        await page.keyboard.type(ADMIN.email);
         await page.keyboard.press('Tab');
-        await page.keyboard.type('admin@demo.local');
-        await page.keyboard.press('Tab');
-        await page.keyboard.type('x');
+        await page.keyboard.type(ADMIN.password);
         await page.keyboard.press('Enter');
         await page.waitForURL('**/panel');
       });
@@ -387,7 +403,7 @@ async function main() {
     group('Accesibilidad (axe: WCAG 2.2 AA) en claro y oscuro');
     {
       const { page } = await newPage(browser, { width: 1280, height: 900 }, external);
-      await loginDemo(page, '/panel');
+      await loginAdmin(page, '/panel');
       const screens = ['/panel', '/vuelos', '/vuelos/crear', '/tarifas', '/aeropuertos', '/mapas-de-asientos', '/rutas', '/reservas'];
       for (const dark of [false, true]) {
         await page.evaluate((d) => document.documentElement.classList.toggle('dark', d), dark);

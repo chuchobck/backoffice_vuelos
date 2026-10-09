@@ -1,4 +1,4 @@
-/** UUID deterministas para el modo demo: las pruebas y las capturas son reproducibles. */
+/** UUID deterministas para pruebas: los resultados son reproducibles. */
 let counter = 0;
 
 export function resetIds(): void {
