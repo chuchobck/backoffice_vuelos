@@ -14,6 +14,7 @@ import { ResourcePager } from './ResourcePager';
 import type { ResourceConfig } from './types';
 
 const PAGE_SIZES = [10, 25, 50];
+const blockedId = 'resource-blocked';
 
 /** Texto sin mayúsculas ni tildes, para que "quito" encuentre "Quito" y "cordoba" encuentre "Córdoba". */
 export function normalizeText(value: string): string {
@@ -194,8 +195,9 @@ export function ResourceScreen<N extends ResourceName, V extends FieldValues = F
             isRowMuted={(item) => !config.isActive(item)}
             actions={(item) => {
               const id = config.idOf(item);
-              const names = { noun: config.noun, id };
+              const names = { noun: config.noun, id: config.displayOf?.(item) ?? id };
               const isActive = config.isActive(item);
+              const blocked = isActive ? (config.deactivateBlocked?.(item) ?? null) : null;
               return (
                 <div className="flex flex-wrap gap-1">
                   {config.detail ? (
@@ -204,18 +206,35 @@ export function ResourceScreen<N extends ResourceName, V extends FieldValues = F
                       {es.crud.view}
                     </Button>
                   ) : null}
-                  {config.form || config.editDialog ? (
+                  {!config.noEdit && (config.form || config.editDialog) ? (
                     <Button size="sm" variant="secondary" aria-label={fmt(es.crud.editAria, names)} onClick={() => setForm({ open: true, item })}>
                       <Pencil aria-hidden="true" />
                       {es.common.edit}
                     </Button>
                   ) : null}
                   {isActive ? (
-                    <Button size="sm" variant="danger-outline" aria-label={fmt(label?.ariaLabel ?? es.crud.deactivateAria, names)} onClick={() => { setDeactivateError(null); setTarget(item); }}>
-                      <Trash2 aria-hidden="true" />
-                      {label?.label ?? es.crud.deactivate}
-                    </Button>
-                  ) : (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="danger-outline"
+                        aria-label={fmt(label?.ariaLabel ?? es.crud.deactivateAria, names)}
+                        aria-describedby={blocked ? `${blockedId}-${id}` : undefined}
+                        aria-disabled={blocked !== null || undefined}
+                        title={blocked ?? undefined}
+                        className={blocked ? 'cursor-not-allowed opacity-60' : undefined}
+                        onClick={() => {
+                          // Sigue enfocable (aria-disabled) para que el teclado y el lector de pantalla lean el motivo.
+                          if (blocked) return;
+                          setDeactivateError(null);
+                          setTarget(item);
+                        }}
+                      >
+                        <Trash2 aria-hidden="true" />
+                        {label?.label ?? es.crud.deactivate}
+                      </Button>
+                      {blocked ? <span id={`${blockedId}-${id}`} className="sr-only">{blocked}</span> : null}
+                    </>
+                  ) : config.noReactivate ? null : (
                     <Button size="sm" variant="secondary" aria-label={fmt(es.crud.reactivateAria, names)} onClick={() => void onReactivate(item)}>
                       <RotateCcw aria-hidden="true" />
                       {es.crud.reactivate}
@@ -257,7 +276,7 @@ export function ResourceScreen<N extends ResourceName, V extends FieldValues = F
       <ConfirmDialog
         open={target !== null}
         onOpenChange={(open) => (open ? undefined : setTarget(null))}
-        title={fmt(label?.title ?? es.crud.deactivateTitle, { noun: config.noun, id: target ? config.idOf(target) : '' })}
+        title={fmt(label?.title ?? es.crud.deactivateTitle, { noun: config.noun, id: target ? (config.displayOf?.(target) ?? config.idOf(target)) : '' })}
         description={label?.text ?? es.crud.deactivateText}
         confirmLabel={label?.label ?? es.crud.deactivate}
         cancelLabel={es.crud.keep}

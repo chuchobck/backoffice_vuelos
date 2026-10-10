@@ -39,7 +39,7 @@ interface BaseField {
 }
 
 export type FieldSpec =
-  | (BaseField & { kind: 'text'; inputType?: 'text' | 'datetime-local' | 'date'; upper?: boolean; inputMode?: 'text' | 'numeric' | 'decimal' | 'email'; maxLength?: number; placeholder?: string; autoComplete?: string })
+  | (BaseField & { kind: 'text'; inputType?: 'text' | 'datetime-local' | 'date' | 'password'; upper?: boolean; inputMode?: 'text' | 'numeric' | 'decimal' | 'email'; maxLength?: number; placeholder?: string; autoComplete?: string })
   | (BaseField & { kind: 'select'; options?: SelectOption[]; source?: OptionSource; placeholder?: string })
   | (BaseField & { kind: 'checkbox' });
 
@@ -93,6 +93,8 @@ export interface ResourceConfig<N extends ResourceName, V extends FieldValues = 
   /** Nombre de la tabla en plural: "Aeropuertos". */
   title: string;
   idOf: (item: ItemOf<N>) => string;
+  /** Cómo se nombra el registro en textos y etiquetas (por defecto, su id): p. ej. el correo de un administrador. */
+  displayOf?: (item: ItemOf<N>) => string;
   isActive: (item: ItemOf<N>) => boolean;
   columns: Column<ItemOf<N>>[];
   /** Texto en el que busca "Buscar" (por defecto, todos los valores del registro). */
@@ -109,6 +111,12 @@ export interface ResourceConfig<N extends ResourceName, V extends FieldValues = 
   createLink?: { to: string; label: string };
   /** Sin `detail` no hay botón "Ver". Con `fetch`, el detalle se pide a GET /{id}. */
   detail?: { fetch?: boolean; rows: (data: DetailOf<N>) => DetailRow[] };
+  /** La API no tiene edición: no se ofrece el botón "Editar". */
+  noEdit?: boolean;
+  /** La API no tiene reactivación: una fila dada de baja no ofrece "Reactivar". */
+  noReactivate?: boolean;
+  /** Si devuelve un texto, la baja de esa fila está bloqueada (botón desactivado) y el texto explica por qué. */
+  deactivateBlocked?: (item: ItemOf<N>) => string | null;
   /** Textos propios de la baja (una salida se "cancela"). */
   deactivation?: { label: string; title: string; text: string; ariaLabel?: string };
   /** Recursos cuyas consultas también se invalidan al escribir (p. ej. una baja afecta a las tarifas). */

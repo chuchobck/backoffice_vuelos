@@ -1,5 +1,5 @@
 import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { Fragment, type ReactNode } from 'react';
 import { es, fmt } from '@/shared/i18n';
 import { cn } from '@/shared/lib/cn';
 import { Skeleton } from './skeleton';
@@ -31,6 +31,8 @@ interface DataTableProps<T> {
   isRowMuted?: (row: T) => boolean;
   /** Última columna (botones de cada fila). */
   actions?: (row: T) => ReactNode;
+  /** Contenido que se despliega bajo una fila (una fila más de la tabla, de ancho completo); `null` = cerrada. */
+  expanded?: (row: T) => ReactNode | null;
 }
 
 /** Orden de una columna: ascendente, descendente y sin orden. */
@@ -57,7 +59,7 @@ export function sortRows<T>(rows: T[], columns: Column<T>[], sort: SortState | n
  * esqueletos mientras carga y desplazamiento horizontal DENTRO de su contenedor (la región se
  * puede enfocar para desplazarla con el teclado).
  */
-export function DataTable<T>({ columns, rows, getRowId, caption, sort, onSort, loading = false, skeletonRows = 5, isRowMuted, actions }: DataTableProps<T>) {
+export function DataTable<T>({ columns, rows, getRowId, caption, sort, onSort, loading = false, skeletonRows = 5, isRowMuted, actions, expanded }: DataTableProps<T>) {
   const colCount = columns.length + (actions ? 1 : 0);
   return (
     <div role="region" aria-label={fmt(es.a11y.tableRegion, { name: caption })} tabIndex={0} className="relative max-w-full overflow-x-auto rounded border-2 border-border bg-surface">
@@ -109,15 +111,25 @@ export function DataTable<T>({ columns, rows, getRowId, caption, sort, onSort, l
               ))
             : rows.map((row) => {
                 const muted = isRowMuted?.(row) ?? false;
+                const extra = expanded?.(row) ?? null;
                 return (
-                  <tr key={getRowId(row)} className={cn('border-t border-border align-middle', muted && 'bg-background text-muted')}>
-                    {columns.map((c) => (
-                      <td key={c.id} className={cn('px-3 py-2', c.className)}>
-                        {c.cell(row)}
-                      </td>
-                    ))}
-                    {actions ? <td className="px-3 py-2">{actions(row)}</td> : null}
-                  </tr>
+                  <Fragment key={getRowId(row)}>
+                    <tr className={cn('border-t border-border align-middle', muted && 'bg-background text-muted')}>
+                      {columns.map((c) => (
+                        <td key={c.id} className={cn('px-3 py-2', c.className)}>
+                          {c.cell(row)}
+                        </td>
+                      ))}
+                      {actions ? <td className="px-3 py-2">{actions(row)}</td> : null}
+                    </tr>
+                    {extra ? (
+                      <tr className="bg-background">
+                        <td colSpan={colCount} className="px-3 py-3">
+                          {extra}
+                        </td>
+                      </tr>
+                    ) : null}
+                  </Fragment>
                 );
               })}
         </tbody>

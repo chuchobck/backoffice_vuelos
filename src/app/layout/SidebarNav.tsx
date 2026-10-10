@@ -28,10 +28,6 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
                   >
                     <Icon aria-hidden="true" className="size-5 shrink-0" />
                     <span className="min-w-0 flex-1">{item.label}</span>
-                    {item.pending ? (
-                      <span className="shrink-0 rounded-sm bg-warning-tint px-1 text-xs font-bold text-warning">{es.nav.pendingShort}</span>
-                    ) : null}
-                    {item.pending ? <span className="sr-only">: {es.nav.pendingTag}</span> : null}
                   </Link>
                 </li>
               );

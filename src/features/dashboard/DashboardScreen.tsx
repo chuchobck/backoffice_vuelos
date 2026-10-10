@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { routes } from '@/app/routes';
 import { ALL_PAGES_CAP } from '@/shared/api';
 import { es, fmt } from '@/shared/i18n';
-import { Alert, Button } from '@/shared/ui';
+import { Button } from '@/shared/ui';
 import { CountCard } from './CountCard';
 
 const t = es.dashboard;
@@ -34,16 +34,14 @@ export function DashboardScreen() {
         <p className="text-sm text-muted">{fmt(t.capNote, { cap: ALL_PAGES_CAP })}</p>
       </section>
 
-      <section aria-labelledby="dash-pending" className="flex flex-col gap-3">
-        <h2 id="dash-pending" className="text-xl">{t.pendingTitle}</h2>
-        <Alert variant="warning">
-          <p>{t.pendingText}</p>
-          <ul className="mt-2 flex flex-wrap gap-4">
-            <li><Link to={routes.bookings()} className="inline-flex min-h-11 items-center">{es.nav.bookings}</Link></li>
-            <li><Link to={routes.audit()} className="inline-flex min-h-11 items-center">{es.nav.audit}</Link></li>
-            <li><Link to={routes.admins()} className="inline-flex min-h-11 items-center">{es.nav.admins}</Link></li>
-          </ul>
-        </Alert>
+      <section aria-labelledby="dash-control" className="flex flex-col gap-3">
+        <h2 id="dash-control" className="text-xl">{t.controlTitle}</h2>
+        <p className="text-muted">{t.controlText}</p>
+        <ul className="flex flex-wrap gap-4">
+          <li><Link to={routes.bookings()} className="inline-flex min-h-11 items-center">{es.nav.bookings}</Link></li>
+          <li><Link to={routes.admins()} className="inline-flex min-h-11 items-center">{es.nav.admins}</Link></li>
+          <li><Link to={routes.audit()} className="inline-flex min-h-11 items-center">{es.nav.audit}</Link></li>
+        </ul>
       </section>
 
       <div>
