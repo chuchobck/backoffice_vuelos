@@ -13,6 +13,7 @@ import type {
 } from '@/shared/api/contract';
 import { ApiError } from '@/shared/api/errors';
 import { nextUuid } from './ids';
+import { createFakeAdminExtras, FAKE_ADMIN_ID } from './fake-admin';
 import { buildSeed, summarizeCabins, type AirportRow, type FakeState } from './seed';
 
 export interface FakeOptions {
@@ -74,7 +75,7 @@ export function createFakeAdminApi(options: FakeOptions = {}): AdminApi {
   const latency = options.latencyMs ?? 80;
   const wait = () => (latency > 0 ? new Promise<void>((r) => setTimeout(r, latency)) : Promise.resolve());
   const s: FakeState = buildSeed(now());
-  let account: { email: string; scopes: readonly string[] } = FAKE_ACCOUNTS.admin;
+  let account: { email: string; scopes: readonly string[]; id: string } = { ...FAKE_ACCOUNTS.admin, id: FAKE_ADMIN_ID };
   // Tokens únicos como los reales: el SessionManager recuerda los ya rotados y no debe confundirlos tras recargar.
   const random = () => (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`);
   const issueTokens = () => ({ accessToken: `fake.access.${random()}`, refreshToken: `fake-refresh-${random()}`, expiresIn: 900, scope: account.scopes.join(' ') });
@@ -365,10 +366,13 @@ export function createFakeAdminApi(options: FakeOptions = {}): AdminApi {
     blocksReactivate: (r) => (activeOf(s.departures, (d) => d.id === r.departureId) ? undefined : ['departureId', 'Departure is no longer on sale']),
   });
 
+  const extras = createFakeAdminExtras({ now, wait, state: s, admin: FAKE_ACCOUNTS.admin, currentId: () => account.id });
+
   const auth: AuthApi = {
     async login(c) {
       await wait();
-      const found = Object.values(FAKE_ACCOUNTS).find((a) => a.email === c.email && a.password === c.password);
+      const fixed = Object.values(FAKE_ACCOUNTS).find((a) => a.email === c.email && a.password === c.password);
+      const found = fixed ? { ...fixed, id: fixed === FAKE_ACCOUNTS.admin ? FAKE_ADMIN_ID : '00000000-0000-4000-8000-00000000c001' } : extras.findAdminAccount(c.email, c.password);
       if (!found) throw new ApiError({ status: 401 });
       account = found;
       return issueTokens();
@@ -383,9 +387,9 @@ export function createFakeAdminApi(options: FakeOptions = {}): AdminApi {
     },
     async me() {
       await wait();
-      return { id: '00000000-0000-4000-8000-00000000ad01', email: account.email, roles: account.scopes.length ? ['administrador'] : ['cliente'], scopes: [...account.scopes], createdAt: now().toISOString() };
+      return { id: account.id, email: account.email, roles: account.scopes.length ? ['administrador'] : ['cliente'], scopes: [...account.scopes], createdAt: now().toISOString() };
     },
   };
 
-  return { auth, countries, cities, airports, airlines, aircraftModels, fareFamilies, seatMaps, flightNumbers, departures, fares };
+  return { auth, countries, cities, airports, airlines, aircraftModels, fareFamilies, seatMaps, flightNumbers, departures, fares, admins: extras.admins, auditLog: extras.auditLog, bookings: extras.bookings };
 }
