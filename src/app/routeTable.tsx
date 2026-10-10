@@ -12,7 +12,9 @@ import { FaresPage } from '@/pages/FaresPage';
 import { FlightNumbersPage } from '@/pages/FlightNumbersPage';
 import { LoginPage } from '@/pages/LoginPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
-import { PendingPage } from '@/pages/PendingPage';
+import { AdminsPage } from '@/pages/AdminsPage';
+import { AuditPage } from '@/pages/AuditPage';
+import { BookingsPage } from '@/pages/BookingsPage';
 import { RoutesPage } from '@/pages/RoutesPage';
 import { SeatMapsPage } from '@/pages/SeatMapsPage';
 import { RootLayout } from './layout/RootLayout';
@@ -51,9 +53,9 @@ export function buildRoutes(): RouteObject[] {
                 { path: paths.seatMaps, element: <SeatMapsPage /> },
                 { path: paths.cities, element: <CitiesPage /> },
                 { path: paths.countries, element: <CountriesPage /> },
-                { path: paths.bookings, element: <PendingPage kind="bookings" /> },
-                { path: paths.audit, element: <PendingPage kind="audit" /> },
-                { path: paths.admins, element: <PendingPage kind="admins" /> },
+                { path: paths.bookings, element: <BookingsPage /> },
+                { path: paths.audit, element: <AuditPage /> },
+                { path: paths.admins, element: <AdminsPage /> },
                 { path: '*', element: <NotFoundPage /> },
               ],
             },

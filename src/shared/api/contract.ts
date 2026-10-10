@@ -49,11 +49,30 @@ export type CreateFare = S['CrearTarifaDto'];
 export type UpdateFare = S['ActualizarTarifaDto'];
 export type PassengerPrice = S['PrecioPasajeroDto'];
 
+export type AdminUser = S['AdministradorRespuestaDto'];
+export type CreateAdminUser = S['CrearAdministradorDto'];
+export type AuditEvent = S['EventoAuditoriaDto'];
+export type BookingSummary = S['ResumenReservaAdminDto'];
+export type BookingDetail = S['DetalleReservaAdminDto'];
+export type BookingOwner = S['PropietarioReservaDto'];
+export type CancelBooking = S['CancelarReservaAdminDto'];
+export type BookingPassenger = BookingDetail['passengers'][number];
+export type BookingTicket = BookingDetail['tickets'][number];
+export type BookingItinerary = BookingDetail['itineraries'][number];
+export type BookingSegment = BookingItinerary['segments'][number];
+
 export type CabinClass = CabinQuota['cabinClass'];
 export type PassengerType = PassengerPrice['passengerType'];
 export type DepartureStatus = Departure['status'];
 export type SeatPosition = Seat['position'];
 
+export type AuditOperation = AuditEvent['operation'];
+export type BookingStatus = BookingSummary['status'];
+
+export const AUDIT_OPERATIONS: readonly AuditOperation[] = ['INSERT', 'UPDATE', 'DELETE'];
+export const BOOKING_STATUSES: readonly BookingStatus[] = [
+  'PENDING', 'PENDING_PAYMENT', 'TICKET_ISSUING', 'CONFIRMED', 'FAILED', 'CHANGE_PENDING', 'CANCELLATION_PENDING', 'CANCELLED',
+];
 export const CABIN_CLASSES: readonly CabinClass[] = ['ECONOMY', 'PREMIUM_ECONOMY', 'BUSINESS', 'FIRST'];
 export const DEPARTURE_STATUSES: readonly DepartureStatus[] = ['SCHEDULED', 'BOARDING', 'DEPARTED', 'DELAYED', 'ARRIVED', 'CANCELLED', 'DIVERTED'];
 export const PASSENGER_TYPES: readonly PassengerType[] = ['ADULT', 'YOUTH', 'CHILD', 'INFANT'];

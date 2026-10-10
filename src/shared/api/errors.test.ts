@@ -98,3 +98,21 @@ describe('errores de ingreso', () => {
     expect(loginErrorMessage(err(0, { code: 'NETWORK' }))).toBe(e.network);
   });
 });
+
+describe('mensajes de administradores y reservas de administración', () => {
+  it.each([
+    [409, 'You cannot deactivate your own account; ask another administrator', undefined, e.business.ownAccount],
+    [409, 'The last active administrator cannot be deactivated', undefined, e.business.lastAdmin],
+    [409, 'An account with that email already exists', undefined, e.business.accountExists],
+    [409, 'Booking x is already cancelled', 'ALREADY_CANCELLED', e.business.alreadyCancelled],
+    [409, 'Booking x must be CONFIRMED for a cancellation', 'BOOKING_NOT_CONFIRMED', e.business.notConfirmed],
+    [409, 'Booking x has a payment pending in the Payment API; cancel when it is resolved', undefined, e.business.paymentPending],
+    [422, 'This Idempotency-Key was already used with a different request body', undefined, e.business.keyReused],
+  ] as const)('%i %s', (status, detail, code, message) => {
+    expect(errorMessage(new ApiError({ status, detail, code }))).toBe(message);
+  });
+
+  it('nunca muestra el detail técnico', () => {
+    expect(errorMessage(new ApiError({ status: 409, detail: 'uq_secret_internal_constraint' }))).not.toContain('uq_');
+  });
+});

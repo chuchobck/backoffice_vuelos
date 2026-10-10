@@ -302,6 +302,267 @@
         ]
       }
     },
+    "/flights/v1/admin/users": {
+      "post": {
+        "operationId": "AdministradoresController_crear",
+        "summary": "Crear un administrador",
+        "description": "Crea una cuenta con el rol administrador (el rol lo fija el servidor; el cuerpo no lo admite). Mismas reglas que POST /auth/register: correo válido y contraseña de 12 a 128 caracteres.",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CrearAdministradorDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdministradorRespuestaDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Parámetro o cuerpo inválido",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta el token, no es válido o venció (WWW-Authenticate: Bearer)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El token no trae los scopes requeridos: flights:admin",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Ya existe una cuenta con ese correo",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Admin · Administradores"
+        ],
+        "security": [
+          {
+            "OAuth2Security": [
+              "flights:admin"
+            ]
+          },
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "get": {
+        "operationId": "AdministradoresController_listar",
+        "summary": "Listar los administradores (sin los dados de baja, salvo includeInactive)",
+        "description": "Más recientes primero. Nunca devuelve contraseñas ni hashes.",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 10,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "El `nextCursor` de la página anterior",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "includeInactive",
+            "required": false,
+            "in": "query",
+            "description": "Incluye los administradores dados de baja",
+            "schema": {
+              "default": false,
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListaAdministradoresDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Un cursor que no es de esta lista o un límite inválido",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta el token, no es válido o venció (WWW-Authenticate: Bearer)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El token no trae los scopes requeridos: flights:admin",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Admin · Administradores"
+        ],
+        "security": [
+          {
+            "OAuth2Security": [
+              "flights:admin"
+            ]
+          },
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/flights/v1/admin/users/{id}": {
+      "delete": {
+        "operationId": "AdministradoresController_darDeBaja",
+        "summary": "Dar de baja a un administrador (eliminación lógica)",
+        "description": "Deja la cuenta inactiva (no puede iniciar sesión) y revoca sus tokens de refresco; el token de acceso vigente sirve hasta que vence (15 minutos). No borra la fila. Repetirlo no cambia nada. No se puede dar de baja la propia cuenta ni al último administrador activo (409).",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Dado de baja"
+          },
+          "400": {
+            "description": "Parámetro o cuerpo inválido",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta el token, no es válido o venció (WWW-Authenticate: Bearer)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El token no trae los scopes requeridos: flights:admin",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No existe o no es administrador",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Es la propia cuenta o el último administrador activo",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Admin · Administradores"
+        ],
+        "security": [
+          {
+            "OAuth2Security": [
+              "flights:admin"
+            ]
+          },
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/flights/v1/admin/countries": {
       "get": {
         "operationId": "PaisController_listar",
@@ -6430,109 +6691,107 @@
         ]
       }
     },
-    "/flights/v1/search": {
-      "post": {
-        "operationId": "BusquedaController_buscar",
-        "summary": "Búsqueda de vuelos (Multidestino)",
-        "description": "Un tramo es solo ida; dos con los aeropuertos invertidos, ida y vuelta; hasta 6, multidestino. Cada oferta es de una sola aerolínea y trae un itinerario por tramo (directo o con una escala), con las familias tarifarias que tienen cupo para todos los pasajeros. Orden: precio total y luego hora de salida; a lo sumo 20 ofertas. Cada oferta vence a los 30 minutos (SEARCH_OFFER_TTL_MINUTES). Sin resultados: 200 con la lista vacía.",
+    "/flights/v1/admin/audit-log": {
+      "get": {
+        "operationId": "AuditoriaController_listar",
+        "summary": "Listar el registro de auditoría (más recientes primero)",
+        "description": "Solo lectura. Cada alta, cambio y baja de las tablas de negocio, con quién y desde qué IP. before/after son las columnas afectadas; todo valor sensible (hashes de contraseña, tokens, secretos) sale como \"[REDACTED]\". Filtros: table, operation, recordId, userId y el rango from/to (días UTC, incluidos).",
         "parameters": [
           {
-            "name": "X-Device-Fingerprint",
-            "in": "header",
-            "description": "Huella del dispositivo: de 8 a 128 letras, dígitos o . _ : + / = -",
-            "required": true,
+            "name": "table",
+            "required": false,
+            "in": "query",
+            "description": "Nombre de la tabla auditada",
+            "schema": {
+              "example": "aerolinea",
+              "type": "string"
+            }
+          },
+          {
+            "name": "operation",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "INSERT",
+                "UPDATE",
+                "DELETE"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "recordId",
+            "required": false,
+            "in": "query",
+            "description": "Valor de la columna id de la fila afectada",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "required": false,
+            "in": "query",
+            "description": "El `sub` (uuid) de quien hizo el cambio",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "Desde ese día (UTC), incluido",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "Hasta ese día (UTC), incluido",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "El `nextCursor` de la página anterior",
             "schema": {
               "type": "string"
             }
           }
         ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SolicitudBusquedaDto"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
-            "description": "",
+            "description": "Una página. Sin `nextCursor`, no hay más",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RespuestaBusquedaDto"
+                  "$ref": "#/components/schemas/ListaAuditoriaDto"
                 }
               }
             }
           },
           "400": {
-            "description": "Cuerpo inválido, fecha pasada o falta la cabecera X-Device-Fingerprint",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Más de 20 búsquedas por IP en un minuto (con Retry-After)",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "Búsqueda y Catálogo"
-        ]
-      }
-    },
-    "/flights/v1/offers/hold": {
-      "post": {
-        "operationId": "RetencionController_crear",
-        "summary": "Bloquear inventario",
-        "description": "Toma el cupo de los pasajeros con asiento (los infantes viajan en brazos) en la cabina elegida de cada segmento y congela el precio de hoy para todos los pasajeros. Hace falta una selección por cada itinerario de la oferta. El hold vence a los 15 minutos (HOLD_TTL_MINUTES) y entonces el cupo vuelve. La misma Idempotency-Key con el mismo cuerpo devuelve la misma respuesta (201, con Idempotent-Replayed: true) durante 24 horas.",
-        "parameters": [
-          {
-            "name": "Idempotency-Key",
-            "in": "header",
-            "description": "Una por intento lógico de hold; se reusa solo al reintentar el mismo cuerpo",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SolicitudRetencionDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Inventario retenido",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RetencionCreadaDto"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Cuerpo inválido, itinerario repetido o Idempotency-Key ausente o no uuid",
+            "description": "Un filtro inválido (operation, fechas, limit) o un cursor que no es de esta lista",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -6552,7 +6811,354 @@
             }
           },
           "403": {
-            "description": "El token no trae los scopes requeridos: flights:hold",
+            "description": "El token no trae los scopes requeridos: flights:admin",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Admin · Auditoría"
+        ],
+        "security": [
+          {
+            "OAuth2Security": [
+              "flights:admin"
+            ]
+          },
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/flights/v1/admin/bookings": {
+      "get": {
+        "operationId": "ReservaAdminController_listar",
+        "summary": "Listar las reservas de todos los clientes (Paginado)",
+        "description": "De la más reciente a la más vieja. Cada fila lleva su dueño (`owner`). Filtros: pnr, status, createdFrom/createdTo (días UTC, incluidos), ownerEmail (correo exacto) y flightNumber (p. ej. LA2410, en un itinerario vigente).",
+        "parameters": [
+          {
+            "name": "pnr",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "K7M2QX",
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "PENDING",
+                "PENDING_PAYMENT",
+                "TICKET_ISSUING",
+                "CONFIRMED",
+                "FAILED",
+                "CHANGE_PENDING",
+                "CANCELLATION_PENDING",
+                "CANCELLED"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "createdFrom",
+            "required": false,
+            "in": "query",
+            "description": "Creadas desde ese día (UTC), incluido",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "createdTo",
+            "required": false,
+            "in": "query",
+            "description": "Creadas hasta ese día (UTC), incluido",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 10,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "El `nextCursor` de la página anterior",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ownerEmail",
+            "required": false,
+            "in": "query",
+            "description": "Correo exacto del cliente dueño de la reserva",
+            "schema": {
+              "example": "ana@example.com",
+              "type": "string"
+            }
+          },
+          {
+            "name": "flightNumber",
+            "required": false,
+            "in": "query",
+            "description": "Número de vuelo con aerolínea, en algún itinerario vigente de la reserva",
+            "schema": {
+              "example": "LA2410",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListaReservasAdminDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Un filtro inválido o un cursor que no es de esta lista",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta el token, no es válido o venció (WWW-Authenticate: Bearer)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El token no trae los scopes requeridos: flights:admin",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Admin · Reservas"
+        ],
+        "security": [
+          {
+            "OAuth2Security": [
+              "flights:admin"
+            ]
+          },
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/flights/v1/admin/bookings/{bookingId}": {
+      "get": {
+        "operationId": "ReservaAdminController_detalle",
+        "summary": "Detalle completo de cualquier reserva",
+        "description": "El mismo detalle de GET /bookings/{bookingId}, sin el filtro de dueño, más `owner`.",
+        "parameters": [
+          {
+            "name": "bookingId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetalleReservaAdminDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Parámetro o cuerpo inválido",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta el token, no es válido o venció (WWW-Authenticate: Bearer)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El token no trae los scopes requeridos: flights:admin",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "La reserva no existe",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Admin · Reservas"
+        ],
+        "security": [
+          {
+            "OAuth2Security": [
+              "flights:admin"
+            ]
+          },
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/flights/v1/admin/bookings/{bookingId}/cancel": {
+      "post": {
+        "operationId": "ReservaAdminController_cancelar",
+        "summary": "Cancelar una reserva como administrador",
+        "description": "Misma cancelación que la del cliente (mismo reembolso y penalidad según la familia tarifaria, libera asientos y cupo, anula boletos, auditoría y eventos/webhooks), sin necesidad de cotizar antes: el servidor crea y acepta la cotización. 200 con la reserva CANCELLED; 202 si el reembolso sigue pendiente (CANCELLATION_PENDIENTE). La misma Idempotency-Key repite el resultado (con Idempotent-Replayed: true); una reserva ya cancelada, con otra clave, es 409 ALREADY_CANCELLED.",
+        "parameters": [
+          {
+            "name": "bookingId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Una por intento lógico de cancelación; se reusa solo al reintentar",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelarReservaAdminDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Reserva cancelada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetalleReservaAdminDto"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Cancelación en proceso (el reembolso sigue pendiente)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetalleReservaAdminDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Cuerpo inválido o Idempotency-Key ausente",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta el token, no es válido o venció (WWW-Authenticate: Bearer)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El token no trae los scopes requeridos: flights:admin",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "La reserva no existe",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -6562,7 +7168,7 @@
             }
           },
           "409": {
-            "description": "OFFER_NO_LONGER_AVAILABLE: la oferta no existe o venció, la tarifa ya no se vende o no queda cupo para todos los pasajeros",
+            "description": "ALREADY_CANCELLED, la reserva no está CONFIRMED, un vuelo ya salió o hay un pago pendiente",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -6572,17 +7178,7 @@
             }
           },
           "422": {
-            "description": "El itinerario no es de la oferta, faltan itinerarios, la familia no existe para la aerolínea, o la Idempotency-Key ya se usó con otro cuerpo",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Más de 30 holds por IP en un minuto (con Retry-After)",
+            "description": "La Idempotency-Key ya se usó con otro cuerpo",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -6593,280 +7189,17 @@
           }
         },
         "tags": [
-          "Bloqueo de Cupos (Hold)"
+          "Admin · Reservas"
         ],
         "security": [
           {
             "OAuth2Security": [
-              "flights:hold"
+              "flights:admin"
             ]
           },
           {
             "bearer": []
           }
-        ]
-      }
-    },
-    "/flights/v1/offers/hold/{holdId}": {
-      "get": {
-        "operationId": "RetencionController_consultar",
-        "summary": "Consultar estado de un hold",
-        "description": "El dueño consulta el suyo; un administrador, cualquiera. Un hold de otro usuario responde 404, como uno que no existe. Si ya venció, responde EXPIRED (y el cupo ya volvió).",
-        "parameters": [
-          {
-            "name": "holdId",
-            "required": true,
-            "in": "path",
-            "description": "holdId de POST /offers/hold",
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "HELD, RELEASED, EXPIRED o CONSUMED",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/EstadoRetencionDto"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "holdId no es un uuid",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Falta el token, no es válido o venció (WWW-Authenticate: Bearer)",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "El token no trae los scopes requeridos: flights:read",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "El hold no existe o es de otro usuario",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Más de 100 peticiones por IP en un minuto (límite global, RATE_LIMIT_MAX; con Retry-After)",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "Bloqueo de Cupos (Hold)"
-        ],
-        "security": [
-          {
-            "OAuth2Security": [
-              "flights:read"
-            ]
-          },
-          {
-            "bearer": []
-          }
-        ]
-      },
-      "delete": {
-        "operationId": "RetencionController_liberar",
-        "summary": "Liberar hold anticipadamente",
-        "description": "Devuelve el cupo y deja el hold RELEASED. Liberar uno ya liberado o vencido no cambia nada (204). Solo lo libera su dueño.",
-        "parameters": [
-          {
-            "name": "holdId",
-            "required": true,
-            "in": "path",
-            "description": "holdId de POST /offers/hold",
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Liberado exitosamente"
-          },
-          "400": {
-            "description": "holdId no es un uuid",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Falta el token, no es válido o venció (WWW-Authenticate: Bearer)",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "El token no trae los scopes requeridos: flights:hold",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "El hold no existe o es de otro usuario",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "El hold ya se usó en una reserva (fuera del contrato: se cancela la reserva)",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Más de 100 peticiones por IP en un minuto (límite global, RATE_LIMIT_MAX; con Retry-After)",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "Bloqueo de Cupos (Hold)"
-        ],
-        "security": [
-          {
-            "OAuth2Security": [
-              "flights:hold"
-            ]
-          },
-          {
-            "bearer": []
-          }
-        ]
-      }
-    },
-    "/flights/v1/offers/{offerId}/seatmap": {
-      "get": {
-        "operationId": "OfertaController_mapaDeAsientos",
-        "summary": "Obtener mapa de asientos por segmento",
-        "description": "Asientos físicos de la aeronave del segmento, sin precios. Un asiento no está disponible si una reserva ya lo tiene asignado o si su cabina no se vende en esta salida (las retenciones toman cupo, no asientos).",
-        "parameters": [
-          {
-            "name": "offerId",
-            "required": true,
-            "in": "path",
-            "description": "offerId de POST /search",
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "name": "segmentId",
-            "required": true,
-            "in": "query",
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            },
-            "description": "segmentId de un segmento de la oferta"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MapaAsientosOfertaDto"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "offerId o segmentId no son uuid",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "La oferta no existe o venció, o el segmento no es de esa oferta",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Más de 60 mapas por IP en un minuto (con Retry-After)",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "Búsqueda y Catálogo"
         ]
       }
     },
@@ -7236,6 +7569,309 @@
         ]
       }
     },
+    "/flights/v1/offers/hold": {
+      "post": {
+        "operationId": "RetencionController_crear",
+        "summary": "Bloquear inventario",
+        "description": "Toma el cupo de los pasajeros con asiento (los infantes viajan en brazos) en la cabina elegida de cada segmento y congela el precio de hoy para todos los pasajeros. Hace falta una selección por cada itinerario de la oferta. El hold vence a los 15 minutos (HOLD_TTL_MINUTES) y entonces el cupo vuelve. La misma Idempotency-Key con el mismo cuerpo devuelve la misma respuesta (201, con Idempotent-Replayed: true) durante 24 horas.",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Una por intento lógico de hold; se reusa solo al reintentar el mismo cuerpo",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SolicitudRetencionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Inventario retenido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetencionCreadaDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Cuerpo inválido, itinerario repetido o Idempotency-Key ausente o no uuid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta el token, no es válido o venció (WWW-Authenticate: Bearer)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El token no trae los scopes requeridos: flights:hold",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "OFFER_NO_LONGER_AVAILABLE: la oferta no existe o venció, la tarifa ya no se vende o no queda cupo para todos los pasajeros",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "El itinerario no es de la oferta, faltan itinerarios, la familia no existe para la aerolínea, o la Idempotency-Key ya se usó con otro cuerpo",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Más de 30 holds por IP en un minuto (con Retry-After)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Bloqueo de Cupos (Hold)"
+        ],
+        "security": [
+          {
+            "OAuth2Security": [
+              "flights:hold"
+            ]
+          },
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/flights/v1/offers/hold/{holdId}": {
+      "get": {
+        "operationId": "RetencionController_consultar",
+        "summary": "Consultar estado de un hold",
+        "description": "El dueño consulta el suyo; un administrador, cualquiera. Un hold de otro usuario responde 404, como uno que no existe. Si ya venció, responde EXPIRED (y el cupo ya volvió).",
+        "parameters": [
+          {
+            "name": "holdId",
+            "required": true,
+            "in": "path",
+            "description": "holdId de POST /offers/hold",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "HELD, RELEASED, EXPIRED o CONSUMED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EstadoRetencionDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "holdId no es un uuid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta el token, no es válido o venció (WWW-Authenticate: Bearer)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El token no trae los scopes requeridos: flights:read",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "El hold no existe o es de otro usuario",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Más de 100 peticiones por IP en un minuto (límite global, RATE_LIMIT_MAX; con Retry-After)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Bloqueo de Cupos (Hold)"
+        ],
+        "security": [
+          {
+            "OAuth2Security": [
+              "flights:read"
+            ]
+          },
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "RetencionController_liberar",
+        "summary": "Liberar hold anticipadamente",
+        "description": "Devuelve el cupo y deja el hold RELEASED. Liberar uno ya liberado o vencido no cambia nada (204). Solo lo libera su dueño.",
+        "parameters": [
+          {
+            "name": "holdId",
+            "required": true,
+            "in": "path",
+            "description": "holdId de POST /offers/hold",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Liberado exitosamente"
+          },
+          "400": {
+            "description": "holdId no es un uuid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta el token, no es válido o venció (WWW-Authenticate: Bearer)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El token no trae los scopes requeridos: flights:hold",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "El hold no existe o es de otro usuario",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "El hold ya se usó en una reserva (fuera del contrato: se cancela la reserva)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Más de 100 peticiones por IP en un minuto (límite global, RATE_LIMIT_MAX; con Retry-After)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Bloqueo de Cupos (Hold)"
+        ],
+        "security": [
+          {
+            "OAuth2Security": [
+              "flights:hold"
+            ]
+          },
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/flights/v1/bookings/{bookingId}/tickets": {
       "get": {
         "operationId": "BoletoController_listar",
@@ -7423,254 +8059,6 @@
           {
             "OAuth2Security": [
               "flights:read"
-            ]
-          },
-          {
-            "bearer": []
-          }
-        ]
-      }
-    },
-    "/flights/v1/bookings/{bookingId}/baggage-options": {
-      "get": {
-        "operationId": "EquipajeController_opciones",
-        "summary": "Opciones de equipaje post-emisión",
-        "description": "Por pasajero e itinerario: el precio de hoy de una maleta adicional (sumado sobre los vuelos del itinerario), el máximo de la familia tarifaria (0 para infantes) y lo ya comprado.",
-        "parameters": [
-          {
-            "name": "bookingId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Tarifas y límites de maletas",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/OpcionEquipajeDto"
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "bookingId no es un uuid",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Falta el token, no es válido o venció (WWW-Authenticate: Bearer)",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "El token no trae los scopes requeridos: flights:read",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "La reserva no existe o es de otro usuario",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "La reserva no está CONFIRMED",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Más de 100 peticiones por IP en un minuto (límite global, RATE_LIMIT_MAX; con Retry-After)",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "Postventa (Maletas, Fechas y Cancelaciones)"
-        ],
-        "security": [
-          {
-            "OAuth2Security": [
-              "flights:read"
-            ]
-          },
-          {
-            "bearer": []
-          }
-        ]
-      }
-    },
-    "/flights/v1/bookings/{bookingId}/baggage": {
-      "post": {
-        "operationId": "EquipajeController_agregar",
-        "summary": "Agregar maleta extra post-emisión",
-        "description": "Cobra quantity × el precio de hoy con paymentReference (PAY-OK-… aprobado: 200; PAY-PEND-… pendiente: 202 y la maleta ya cuenta para el máximo; PAY-REJ-… rechazado: 422 sin cambios). La misma Idempotency-Key con el mismo cuerpo repite el resultado sin cobrar dos veces (24 horas).",
-        "parameters": [
-          {
-            "name": "bookingId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "name": "Idempotency-Key",
-            "in": "header",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SolicitudEquipajeDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Maleta agregada",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/EquipajeAgregadoDto"
-                }
-              }
-            }
-          },
-          "202": {
-            "description": "Pago pendiente: la maleta queda reservada y el proceso confirma el pago después",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/EquipajeAgregadoDto"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Cuerpo inválido o Idempotency-Key ausente",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Falta el token, no es válido o venció (WWW-Authenticate: Bearer)",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "El token no trae los scopes requeridos: flights:book",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "La reserva no existe o es de otro usuario",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "BAGGAGE_LIMIT_EXCEEDED, la reserva no está CONFIRMED, el vuelo ya salió o la referencia ya se usó",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "El pasajero o el itinerario no son de la reserva, el pago no es válido o no se autorizó, o la Idempotency-Key ya se usó con otro cuerpo",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Más de 10 compras por IP en un minuto",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "Postventa (Maletas, Fechas y Cancelaciones)"
-        ],
-        "security": [
-          {
-            "OAuth2Security": [
-              "flights:book"
             ]
           },
           {
@@ -7916,6 +8304,391 @@
           {
             "OAuth2Security": [
               "flights:cancel"
+            ]
+          },
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/flights/v1/search": {
+      "post": {
+        "operationId": "BusquedaController_buscar",
+        "summary": "Búsqueda de vuelos (Multidestino)",
+        "description": "Un tramo es solo ida; dos con los aeropuertos invertidos, ida y vuelta; hasta 6, multidestino. Cada oferta es de una sola aerolínea y trae un itinerario por tramo (directo o con una escala), con las familias tarifarias que tienen cupo para todos los pasajeros. Orden: precio total y luego hora de salida; a lo sumo 20 ofertas. Cada oferta vence a los 30 minutos (SEARCH_OFFER_TTL_MINUTES). Sin resultados: 200 con la lista vacía.",
+        "parameters": [
+          {
+            "name": "X-Device-Fingerprint",
+            "in": "header",
+            "description": "Huella del dispositivo: de 8 a 128 letras, dígitos o . _ : + / = -",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SolicitudBusquedaDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaBusquedaDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Cuerpo inválido, fecha pasada o falta la cabecera X-Device-Fingerprint",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Más de 20 búsquedas por IP en un minuto (con Retry-After)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Búsqueda y Catálogo"
+        ]
+      }
+    },
+    "/flights/v1/offers/{offerId}/seatmap": {
+      "get": {
+        "operationId": "OfertaController_mapaDeAsientos",
+        "summary": "Obtener mapa de asientos por segmento",
+        "description": "Asientos físicos de la aeronave del segmento, sin precios. Un asiento no está disponible si una reserva ya lo tiene asignado o si su cabina no se vende en esta salida (las retenciones toman cupo, no asientos).",
+        "parameters": [
+          {
+            "name": "offerId",
+            "required": true,
+            "in": "path",
+            "description": "offerId de POST /search",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "segmentId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "segmentId de un segmento de la oferta"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MapaAsientosOfertaDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "offerId o segmentId no son uuid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "La oferta no existe o venció, o el segmento no es de esa oferta",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Más de 60 mapas por IP en un minuto (con Retry-After)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Búsqueda y Catálogo"
+        ]
+      }
+    },
+    "/flights/v1/bookings/{bookingId}/baggage-options": {
+      "get": {
+        "operationId": "EquipajeController_opciones",
+        "summary": "Opciones de equipaje post-emisión",
+        "description": "Por pasajero e itinerario: el precio de hoy de una maleta adicional (sumado sobre los vuelos del itinerario), el máximo de la familia tarifaria (0 para infantes) y lo ya comprado.",
+        "parameters": [
+          {
+            "name": "bookingId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tarifas y límites de maletas",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OpcionEquipajeDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "bookingId no es un uuid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta el token, no es válido o venció (WWW-Authenticate: Bearer)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El token no trae los scopes requeridos: flights:read",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "La reserva no existe o es de otro usuario",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "La reserva no está CONFIRMED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Más de 100 peticiones por IP en un minuto (límite global, RATE_LIMIT_MAX; con Retry-After)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Postventa (Maletas, Fechas y Cancelaciones)"
+        ],
+        "security": [
+          {
+            "OAuth2Security": [
+              "flights:read"
+            ]
+          },
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/flights/v1/bookings/{bookingId}/baggage": {
+      "post": {
+        "operationId": "EquipajeController_agregar",
+        "summary": "Agregar maleta extra post-emisión",
+        "description": "Cobra quantity × el precio de hoy con paymentReference (PAY-OK-… aprobado: 200; PAY-PEND-… pendiente: 202 y la maleta ya cuenta para el máximo; PAY-REJ-… rechazado: 422 sin cambios). La misma Idempotency-Key con el mismo cuerpo repite el resultado sin cobrar dos veces (24 horas).",
+        "parameters": [
+          {
+            "name": "bookingId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SolicitudEquipajeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Maleta agregada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EquipajeAgregadoDto"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Pago pendiente: la maleta queda reservada y el proceso confirma el pago después",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EquipajeAgregadoDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Cuerpo inválido o Idempotency-Key ausente",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta el token, no es válido o venció (WWW-Authenticate: Bearer)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El token no trae los scopes requeridos: flights:book",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "La reserva no existe o es de otro usuario",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "BAGGAGE_LIMIT_EXCEEDED, la reserva no está CONFIRMED, el vuelo ya salió o la referencia ya se usó",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "El pasajero o el itinerario no son de la reserva, el pago no es válido o no se autorizó, o la Idempotency-Key ya se usó con otro cuerpo",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Más de 10 compras por IP en un minuto",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Postventa (Maletas, Fechas y Cancelaciones)"
+        ],
+        "security": [
+          {
+            "OAuth2Security": [
+              "flights:book"
             ]
           },
           {
@@ -8528,43 +9301,55 @@
     },
     {
       "name": "Admin · País",
-      "description": "Fuera del contrato: CRUD de administración del catálogo (scope flights:admin). DELETE da de baja (activo = false), no borra."
+      "description": "Fuera del contrato: administración (scope flights:admin). DELETE da de baja (activo = false), no borra."
     },
     {
       "name": "Admin · Ciudad",
-      "description": "Fuera del contrato: CRUD de administración del catálogo (scope flights:admin). DELETE da de baja (activo = false), no borra."
+      "description": "Fuera del contrato: administración (scope flights:admin). DELETE da de baja (activo = false), no borra."
     },
     {
       "name": "Admin · Aeropuerto",
-      "description": "Fuera del contrato: CRUD de administración del catálogo (scope flights:admin). DELETE da de baja (activo = false), no borra."
+      "description": "Fuera del contrato: administración (scope flights:admin). DELETE da de baja (activo = false), no borra."
     },
     {
       "name": "Admin · Aerolínea",
-      "description": "Fuera del contrato: CRUD de administración del catálogo (scope flights:admin). DELETE da de baja (activo = false), no borra."
+      "description": "Fuera del contrato: administración (scope flights:admin). DELETE da de baja (activo = false), no borra."
     },
     {
       "name": "Admin · Modelo de aeronave",
-      "description": "Fuera del contrato: CRUD de administración del catálogo (scope flights:admin). DELETE da de baja (activo = false), no borra."
+      "description": "Fuera del contrato: administración (scope flights:admin). DELETE da de baja (activo = false), no borra."
     },
     {
       "name": "Admin · Familia tarifaria",
-      "description": "Fuera del contrato: CRUD de administración del catálogo (scope flights:admin). DELETE da de baja (activo = false), no borra."
+      "description": "Fuera del contrato: administración (scope flights:admin). DELETE da de baja (activo = false), no borra."
     },
     {
       "name": "Admin · Mapa de asientos",
-      "description": "Fuera del contrato: CRUD de administración del catálogo (scope flights:admin). DELETE da de baja (activo = false), no borra."
+      "description": "Fuera del contrato: administración (scope flights:admin). DELETE da de baja (activo = false), no borra."
     },
     {
       "name": "Admin · Vuelo",
-      "description": "Fuera del contrato: CRUD de administración del catálogo (scope flights:admin). DELETE da de baja (activo = false), no borra."
+      "description": "Fuera del contrato: administración (scope flights:admin). DELETE da de baja (activo = false), no borra."
     },
     {
       "name": "Admin · Vuelo programado",
-      "description": "Fuera del contrato: CRUD de administración del catálogo (scope flights:admin). DELETE da de baja (activo = false), no borra."
+      "description": "Fuera del contrato: administración (scope flights:admin). DELETE da de baja (activo = false), no borra."
     },
     {
       "name": "Admin · Tarifa",
-      "description": "Fuera del contrato: CRUD de administración del catálogo (scope flights:admin). DELETE da de baja (activo = false), no borra."
+      "description": "Fuera del contrato: administración (scope flights:admin). DELETE da de baja (activo = false), no borra."
+    },
+    {
+      "name": "Admin · Auditoría",
+      "description": "Fuera del contrato: administración (scope flights:admin). DELETE da de baja (activo = false), no borra."
+    },
+    {
+      "name": "Admin · Administradores",
+      "description": "Fuera del contrato: administración (scope flights:admin). DELETE da de baja (activo = false), no borra."
+    },
+    {
+      "name": "Admin · Reservas",
+      "description": "Fuera del contrato: administración (scope flights:admin). DELETE da de baja (activo = false), no borra."
     }
   ],
   "servers": [],
@@ -8588,7 +9373,7 @@
               "flights:book": "Comprar y alterar reserva",
               "flights:cancel": "Cancelar reservas",
               "flights:webhooks": "Gestionar webhooks",
-              "flights:admin": "Administrar el catálogo (propio del proyecto, no está en el contrato)"
+              "flights:admin": "Administrar catálogo, auditoría, administradores y reservas (propio del proyecto, no está en el contrato)"
             }
           },
           "clientCredentials": {
@@ -8599,7 +9384,7 @@
               "flights:book": "Comprar y alterar reserva",
               "flights:cancel": "Cancelar reservas",
               "flights:webhooks": "Gestionar webhooks",
-              "flights:admin": "Administrar el catálogo (propio del proyecto, no está en el contrato)"
+              "flights:admin": "Administrar catálogo, auditoría, administradores y reservas (propio del proyecto, no está en el contrato)"
             }
           }
         },
@@ -8844,6 +9629,74 @@
         },
         "required": [
           "refresh_token"
+        ]
+      },
+      "CrearAdministradorDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "ana@example.com",
+            "maxLength": 254
+          },
+          "password": {
+            "type": "string",
+            "example": "una frase larga y fácil de recordar",
+            "minLength": 12,
+            "maxLength": 128,
+            "format": "password"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
+      },
+      "AdministradorRespuestaDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Es el `sub` de sus tokens y el id en la URL"
+          },
+          "email": {
+            "type": "string",
+            "example": "admin2@quinde.example"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "active": {
+            "type": "boolean",
+            "example": true,
+            "description": "false si el administrador fue dado de baja"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "createdAt",
+          "active"
+        ]
+      },
+      "ListaAdministradoresDto": {
+        "type": "object",
+        "properties": {
+          "nextCursor": {
+            "type": "string",
+            "description": "Pásalo como `cursor` para la siguiente página"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdministradorRespuestaDto"
+            }
+          }
+        },
+        "required": [
+          "items"
         ]
       },
       "PaisRespuestaDto": {
@@ -10259,103 +11112,218 @@
           }
         }
       },
-      "TramoSolicitadoDto": {
+      "EventoAuditoriaDto": {
         "type": "object",
         "properties": {
+          "id": {
+            "type": "string",
+            "example": "1523",
+            "description": "Número del evento, como texto (es un bigint)"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "table": {
+            "type": "string",
+            "example": "aerolinea",
+            "description": "Tabla donde ocurrió el cambio"
+          },
+          "operation": {
+            "type": "string",
+            "enum": [
+              "INSERT",
+              "UPDATE",
+              "DELETE"
+            ]
+          },
+          "recordId": {
+            "type": "string",
+            "description": "Valor de la columna id de la fila afectada"
+          },
+          "userId": {
+            "type": "string",
+            "nullable": true,
+            "description": "El `sub` de quien hizo el cambio; null si lo hizo un proceso interno"
+          },
+          "ipAddress": {
+            "type": "string",
+            "nullable": true,
+            "example": "203.0.113.7"
+          },
+          "before": {
+            "type": "object",
+            "nullable": true,
+            "additionalProperties": true,
+            "description": "En UPDATE, solo las columnas que cambiaron con su valor previo; en DELETE, la fila completa. Los valores sensibles salen como \"[REDACTED]\"."
+          },
+          "after": {
+            "type": "object",
+            "nullable": true,
+            "additionalProperties": true,
+            "description": "En UPDATE, las mismas columnas con su valor nuevo; en INSERT, la fila completa."
+          }
+        },
+        "required": [
+          "id",
+          "occurredAt",
+          "table",
+          "operation",
+          "recordId",
+          "userId",
+          "ipAddress",
+          "before",
+          "after"
+        ]
+      },
+      "ListaAuditoriaDto": {
+        "type": "object",
+        "properties": {
+          "nextCursor": {
+            "type": "string",
+            "description": "Pásalo como `cursor` para la siguiente página"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventoAuditoriaDto"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "MontoDto": {
+        "type": "object",
+        "properties": {
+          "currency": {
+            "type": "string",
+            "example": "USD",
+            "pattern": "^[A-Z]{3}$"
+          },
+          "baseFare": {
+            "type": "string",
+            "example": "75.40"
+          },
+          "taxes": {
+            "type": "string",
+            "example": "15.08",
+            "description": "IVA y tasas aeroportuarias"
+          },
+          "total": {
+            "type": "string",
+            "example": "90.48"
+          }
+        },
+        "required": [
+          "currency",
+          "total"
+        ]
+      },
+      "PropietarioReservaDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string",
+            "nullable": true,
+            "example": "ana@example.com"
+          }
+        },
+        "required": [
+          "id",
+          "email"
+        ]
+      },
+      "ResumenReservaAdminDto": {
+        "type": "object",
+        "properties": {
+          "bookingId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "pnr": {
+            "type": "string",
+            "example": "K7M2QX"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "PENDING_PAYMENT",
+              "TICKET_ISSUING",
+              "CONFIRMED",
+              "FAILED",
+              "CHANGE_PENDING",
+              "CANCELLATION_PENDING",
+              "CANCELLED"
+            ],
+            "example": "CONFIRMED"
+          },
           "origin": {
             "type": "string",
             "example": "UIO",
-            "pattern": "^[A-Z]{3}$"
+            "description": "Origen del primer itinerario"
           },
           "destination": {
             "type": "string",
             "example": "GYE",
-            "pattern": "^[A-Z]{3}$"
+            "description": "Destino del primer itinerario"
           },
           "departureDate": {
             "type": "string",
-            "example": "2026-10-21",
+            "example": "2026-10-25",
             "format": "date",
-            "description": "Fecha local de salida en el aeropuerto de origen (la semilla cubre 90 días)"
+            "description": "Fecha local de la primera salida"
+          },
+          "grandTotal": {
+            "example": {
+              "currency": "USD",
+              "baseFare": "61.60",
+              "taxes": "12.32",
+              "total": "73.92"
+            },
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MontoDto"
+              }
+            ]
+          },
+          "owner": {
+            "$ref": "#/components/schemas/PropietarioReservaDto"
           }
         },
         "required": [
+          "bookingId",
+          "pnr",
+          "status",
           "origin",
           "destination",
-          "departureDate"
+          "departureDate",
+          "grandTotal",
+          "owner"
         ]
       },
-      "PasajerosDto": {
+      "ListaReservasAdminDto": {
         "type": "object",
         "properties": {
-          "adults": {
-            "type": "number",
-            "example": 1,
-            "minimum": 1,
-            "default": 1
+          "nextCursor": {
+            "type": "string",
+            "description": "Se pasa como `cursor` para la página siguiente"
           },
-          "youths": {
-            "type": "number",
-            "example": 0,
-            "minimum": 0,
-            "default": 0
-          },
-          "children": {
-            "type": "number",
-            "example": 0,
-            "minimum": 0,
-            "default": 0
-          },
-          "infants": {
-            "type": "number",
-            "example": 0,
-            "minimum": 0,
-            "default": 0
-          }
-        }
-      },
-      "SolicitudBusquedaDto": {
-        "type": "object",
-        "properties": {
-          "itineraries": {
-            "minItems": 1,
-            "maxItems": 6,
-            "example": [
-              {
-                "origin": "UIO",
-                "destination": "GYE",
-                "departureDate": "2026-10-21"
-              }
-            ],
+          "items": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/TramoSolicitadoDto"
+              "$ref": "#/components/schemas/ResumenReservaAdminDto"
             }
-          },
-          "passengers": {
-            "$ref": "#/components/schemas/PasajerosDto"
           }
         },
         "required": [
-          "itineraries",
-          "passengers"
-        ]
-      },
-      "AerolineaOfertaDto": {
-        "type": "object",
-        "properties": {
-          "code": {
-            "type": "string",
-            "example": "AV"
-          },
-          "name": {
-            "type": "string",
-            "example": "Avianca"
-          }
-        },
-        "required": [
-          "code",
-          "name"
+          "items"
         ]
       },
       "ExtremoVueloDto": {
@@ -10483,33 +11451,6 @@
           }
         }
       },
-      "MontoDto": {
-        "type": "object",
-        "properties": {
-          "currency": {
-            "type": "string",
-            "example": "USD",
-            "pattern": "^[A-Z]{3}$"
-          },
-          "baseFare": {
-            "type": "string",
-            "example": "75.40"
-          },
-          "taxes": {
-            "type": "string",
-            "example": "15.08",
-            "description": "IVA y tasas aeroportuarias"
-          },
-          "total": {
-            "type": "string",
-            "example": "90.48"
-          }
-        },
-        "required": [
-          "currency",
-          "total"
-        ]
-      },
       "PrecioPorPasajeroDto": {
         "type": "object",
         "properties": {
@@ -10622,308 +11563,6 @@
           "stopsCount",
           "segments",
           "pricingOptions"
-        ]
-      },
-      "OfertaVueloDto": {
-        "type": "object",
-        "properties": {
-          "offerId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "airline": {
-            "$ref": "#/components/schemas/AerolineaOfertaDto"
-          },
-          "itineraries": {
-            "description": "En el orden de los tramos pedidos",
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/OpcionItinerarioDto"
-            }
-          },
-          "grandTotal": {
-            "description": "Todos los pasajeros con la familia más barata de cada itinerario",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/MontoDto"
-              }
-            ]
-          }
-        },
-        "required": [
-          "offerId",
-          "airline",
-          "itineraries",
-          "grandTotal"
-        ]
-      },
-      "RespuestaBusquedaDto": {
-        "type": "object",
-        "properties": {
-          "totalOffers": {
-            "type": "number",
-            "example": 2,
-            "description": "Ofertas devueltas en `offers`"
-          },
-          "offers": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/OfertaVueloDto"
-            }
-          }
-        },
-        "required": [
-          "totalOffers",
-          "offers"
-        ]
-      },
-      "SeleccionItinerarioDto": {
-        "type": "object",
-        "properties": {
-          "itineraryId": {
-            "type": "string",
-            "format": "uuid",
-            "description": "itineraryId de la oferta (POST /search)"
-          },
-          "cabinClass": {
-            "type": "string",
-            "enum": [
-              "ECONOMY",
-              "PREMIUM_ECONOMY",
-              "BUSINESS",
-              "FIRST"
-            ],
-            "example": "ECONOMY"
-          },
-          "fareBrand": {
-            "type": "string",
-            "example": "BASIC",
-            "pattern": "^[A-Z0-9_]{2,20}$"
-          }
-        },
-        "required": [
-          "itineraryId",
-          "cabinClass",
-          "fareBrand"
-        ]
-      },
-      "SolicitudRetencionDto": {
-        "type": "object",
-        "properties": {
-          "offerId": {
-            "type": "string",
-            "format": "uuid",
-            "description": "offerId de POST /search"
-          },
-          "itinerarySelections": {
-            "minItems": 1,
-            "maxItems": 6,
-            "description": "Exactamente una por cada itinerario de la oferta",
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/SeleccionItinerarioDto"
-            }
-          },
-          "passengersBreakdown": {
-            "$ref": "#/components/schemas/PasajerosDto"
-          }
-        },
-        "required": [
-          "offerId",
-          "itinerarySelections",
-          "passengersBreakdown"
-        ]
-      },
-      "RetencionCreadaDto": {
-        "type": "object",
-        "properties": {
-          "holdId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "HELD"
-            ],
-            "example": "HELD"
-          },
-          "expiresAt": {
-            "type": "string",
-            "example": "2026-10-05T15:15:00.000Z",
-            "format": "date-time",
-            "description": "UTC"
-          },
-          "ttlMinutes": {
-            "type": "number",
-            "example": 15,
-            "description": "Vigencia del hold (HOLD_TTL_MINUTES)"
-          },
-          "lockedPrice": {
-            "example": {
-              "currency": "USD",
-              "baseFare": "61.60",
-              "taxes": "12.32",
-              "total": "73.92"
-            },
-            "description": "Precio congelado de todos los pasajeros y todos los itinerarios",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/MontoDto"
-              }
-            ]
-          }
-        },
-        "required": [
-          "holdId",
-          "status",
-          "expiresAt",
-          "ttlMinutes",
-          "lockedPrice"
-        ]
-      },
-      "EstadoRetencionDto": {
-        "type": "object",
-        "properties": {
-          "status": {
-            "type": "string",
-            "enum": [
-              "HELD",
-              "RELEASED",
-              "EXPIRED",
-              "CONSUMED"
-            ],
-            "example": "HELD"
-          },
-          "expiresAt": {
-            "type": "string",
-            "example": "2026-10-05T15:15:00.000Z",
-            "format": "date-time",
-            "description": "Vencimiento del hold (UTC); se informa también cuando ya no está HELD"
-          },
-          "remainingSeconds": {
-            "type": "number",
-            "example": 512,
-            "minimum": 0,
-            "description": "Segundos hasta vencer; 0 si no está HELD"
-          },
-          "lockedPrice": {
-            "example": {
-              "currency": "USD",
-              "baseFare": "61.60",
-              "taxes": "12.32",
-              "total": "73.92"
-            },
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/MontoDto"
-              }
-            ]
-          }
-        },
-        "required": [
-          "status",
-          "remainingSeconds",
-          "lockedPrice"
-        ]
-      },
-      "AsientoMapaDto": {
-        "type": "object",
-        "properties": {
-          "seatNumber": {
-            "type": "string",
-            "example": "12A",
-            "description": "Fila y letra"
-          },
-          "isAvailable": {
-            "type": "boolean",
-            "example": true,
-            "description": "false si ya está asignado en una reserva o su cabina no se vende en esta salida"
-          },
-          "characteristics": {
-            "type": "array",
-            "example": [
-              "WINDOW"
-            ],
-            "items": {
-              "type": "string",
-              "enum": [
-                "WINDOW",
-                "AISLE",
-                "EXTRA_LEGROOM",
-                "EMERGENCY_EXIT"
-              ]
-            }
-          }
-        },
-        "required": [
-          "seatNumber",
-          "isAvailable",
-          "characteristics"
-        ]
-      },
-      "FilaMapaDto": {
-        "type": "object",
-        "properties": {
-          "rowNumber": {
-            "type": "number",
-            "example": 12
-          },
-          "seats": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/AsientoMapaDto"
-            }
-          }
-        },
-        "required": [
-          "rowNumber",
-          "seats"
-        ]
-      },
-      "CabinaMapaOfertaDto": {
-        "type": "object",
-        "properties": {
-          "cabinClass": {
-            "type": "string",
-            "enum": [
-              "ECONOMY",
-              "PREMIUM_ECONOMY",
-              "BUSINESS",
-              "FIRST"
-            ],
-            "example": "ECONOMY"
-          },
-          "rows": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/FilaMapaDto"
-            }
-          }
-        },
-        "required": [
-          "cabinClass",
-          "rows"
-        ]
-      },
-      "MapaAsientosOfertaDto": {
-        "type": "object",
-        "properties": {
-          "segmentId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "cabins": {
-            "description": "En el orden de las filas",
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/CabinaMapaOfertaDto"
-            }
-          }
-        },
-        "required": [
-          "segmentId",
-          "cabins"
         ]
       },
       "ContactoPasajeroDto": {
@@ -11080,45 +11719,6 @@
           "contact"
         ]
       },
-      "ReferenciaPagoDto": {
-        "type": "object",
-        "properties": {
-          "paymentReference": {
-            "type": "string",
-            "example": "PAY-OK-7F3A9C21",
-            "description": "Referencia de la Payment API (simulada): PAY-OK-… aprobado, PAY-PEND-… pendiente, PAY-REJ-… rechazado"
-          }
-        },
-        "required": [
-          "paymentReference"
-        ]
-      },
-      "SolicitudReservaDto": {
-        "type": "object",
-        "properties": {
-          "holdId": {
-            "type": "string",
-            "format": "uuid",
-            "description": "holdId de POST /offers/hold"
-          },
-          "passengers": {
-            "minItems": 1,
-            "maxItems": 18,
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/PasajeroReservaDto"
-            }
-          },
-          "payment": {
-            "$ref": "#/components/schemas/ReferenciaPagoDto"
-          }
-        },
-        "required": [
-          "holdId",
-          "passengers",
-          "payment"
-        ]
-      },
       "SegmentoBoletoDto": {
         "type": "object",
         "properties": {
@@ -11224,6 +11824,147 @@
         "required": [
           "changedAt",
           "description"
+        ]
+      },
+      "DetalleReservaAdminDto": {
+        "type": "object",
+        "properties": {
+          "bookingId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "pnr": {
+            "type": "string",
+            "example": "K7M2QX",
+            "description": "6 caracteres, sin 0, O, 1, I ni L"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "PENDING_PAYMENT",
+              "TICKET_ISSUING",
+              "CONFIRMED",
+              "FAILED",
+              "CHANGE_PENDING",
+              "CANCELLATION_PENDING",
+              "CANCELLED"
+            ],
+            "example": "CONFIRMED"
+          },
+          "grandTotal": {
+            "example": {
+              "currency": "USD",
+              "baseFare": "61.60",
+              "taxes": "12.32",
+              "total": "73.92"
+            },
+            "description": "El precio congelado en el hold (más equipaje y cargos de cambio, si los hay)",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MontoDto"
+              }
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-10-05T15:02:11.000Z",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "example": "2026-10-05T15:02:11.000Z",
+            "format": "date-time"
+          },
+          "itineraries": {
+            "description": "pricingOptions trae solo la familia vendida, sin precio por tipo de pasajero",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpcionItinerarioDto"
+            }
+          },
+          "passengers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PasajeroReservaDto"
+            }
+          },
+          "tickets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BoletoDto"
+            }
+          },
+          "changes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CambioReservaDto"
+            }
+          },
+          "owner": {
+            "$ref": "#/components/schemas/PropietarioReservaDto"
+          }
+        },
+        "required": [
+          "bookingId",
+          "pnr",
+          "status",
+          "grandTotal",
+          "createdAt",
+          "itineraries",
+          "passengers",
+          "tickets",
+          "changes",
+          "owner"
+        ]
+      },
+      "CancelarReservaAdminDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "example": "Vuelo cancelado por la aerolínea",
+            "maxLength": 500
+          }
+        }
+      },
+      "ReferenciaPagoDto": {
+        "type": "object",
+        "properties": {
+          "paymentReference": {
+            "type": "string",
+            "example": "PAY-OK-7F3A9C21",
+            "description": "Referencia de la Payment API (simulada): PAY-OK-… aprobado, PAY-PEND-… pendiente, PAY-REJ-… rechazado"
+          }
+        },
+        "required": [
+          "paymentReference"
+        ]
+      },
+      "SolicitudReservaDto": {
+        "type": "object",
+        "properties": {
+          "holdId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "holdId de POST /offers/hold"
+          },
+          "passengers": {
+            "minItems": 1,
+            "maxItems": 18,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PasajeroReservaDto"
+            }
+          },
+          "payment": {
+            "$ref": "#/components/schemas/ReferenciaPagoDto"
+          }
+        },
+        "required": [
+          "holdId",
+          "passengers",
+          "payment"
         ]
       },
       "DetalleReservaDto": {
@@ -11397,6 +12138,185 @@
           "items"
         ]
       },
+      "SeleccionItinerarioDto": {
+        "type": "object",
+        "properties": {
+          "itineraryId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "itineraryId de la oferta (POST /search)"
+          },
+          "cabinClass": {
+            "type": "string",
+            "enum": [
+              "ECONOMY",
+              "PREMIUM_ECONOMY",
+              "BUSINESS",
+              "FIRST"
+            ],
+            "example": "ECONOMY"
+          },
+          "fareBrand": {
+            "type": "string",
+            "example": "BASIC",
+            "pattern": "^[A-Z0-9_]{2,20}$"
+          }
+        },
+        "required": [
+          "itineraryId",
+          "cabinClass",
+          "fareBrand"
+        ]
+      },
+      "PasajerosDto": {
+        "type": "object",
+        "properties": {
+          "adults": {
+            "type": "number",
+            "example": 1,
+            "minimum": 1,
+            "default": 1
+          },
+          "youths": {
+            "type": "number",
+            "example": 0,
+            "minimum": 0,
+            "default": 0
+          },
+          "children": {
+            "type": "number",
+            "example": 0,
+            "minimum": 0,
+            "default": 0
+          },
+          "infants": {
+            "type": "number",
+            "example": 0,
+            "minimum": 0,
+            "default": 0
+          }
+        }
+      },
+      "SolicitudRetencionDto": {
+        "type": "object",
+        "properties": {
+          "offerId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "offerId de POST /search"
+          },
+          "itinerarySelections": {
+            "minItems": 1,
+            "maxItems": 6,
+            "description": "Exactamente una por cada itinerario de la oferta",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SeleccionItinerarioDto"
+            }
+          },
+          "passengersBreakdown": {
+            "$ref": "#/components/schemas/PasajerosDto"
+          }
+        },
+        "required": [
+          "offerId",
+          "itinerarySelections",
+          "passengersBreakdown"
+        ]
+      },
+      "RetencionCreadaDto": {
+        "type": "object",
+        "properties": {
+          "holdId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "HELD"
+            ],
+            "example": "HELD"
+          },
+          "expiresAt": {
+            "type": "string",
+            "example": "2026-10-05T15:15:00.000Z",
+            "format": "date-time",
+            "description": "UTC"
+          },
+          "ttlMinutes": {
+            "type": "number",
+            "example": 15,
+            "description": "Vigencia del hold (HOLD_TTL_MINUTES)"
+          },
+          "lockedPrice": {
+            "example": {
+              "currency": "USD",
+              "baseFare": "61.60",
+              "taxes": "12.32",
+              "total": "73.92"
+            },
+            "description": "Precio congelado de todos los pasajeros y todos los itinerarios",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MontoDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "holdId",
+          "status",
+          "expiresAt",
+          "ttlMinutes",
+          "lockedPrice"
+        ]
+      },
+      "EstadoRetencionDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "HELD",
+              "RELEASED",
+              "EXPIRED",
+              "CONSUMED"
+            ],
+            "example": "HELD"
+          },
+          "expiresAt": {
+            "type": "string",
+            "example": "2026-10-05T15:15:00.000Z",
+            "format": "date-time",
+            "description": "Vencimiento del hold (UTC); se informa también cuando ya no está HELD"
+          },
+          "remainingSeconds": {
+            "type": "number",
+            "example": 512,
+            "minimum": 0,
+            "description": "Segundos hasta vencer; 0 si no está HELD"
+          },
+          "lockedPrice": {
+            "example": {
+              "currency": "USD",
+              "baseFare": "61.60",
+              "taxes": "12.32",
+              "total": "73.92"
+            },
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MontoDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "status",
+          "remainingSeconds",
+          "lockedPrice"
+        ]
+      },
       "ListaBoletosDto": {
         "type": "object",
         "properties": {
@@ -11414,6 +12334,285 @@
         "required": [
           "bookingId",
           "tickets"
+        ]
+      },
+      "CotizacionCancelacionDto": {
+        "type": "object",
+        "properties": {
+          "quoteId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "isRefundable": {
+            "type": "boolean",
+            "example": true,
+            "description": "Si se devuelve algo (refundAmount mayor que 0)"
+          },
+          "refundAmount": {
+            "type": "string",
+            "example": "58.84"
+          },
+          "penaltyAmount": {
+            "type": "string",
+            "example": "15.08"
+          },
+          "currency": {
+            "type": "string",
+            "example": "USD"
+          },
+          "expiresAt": {
+            "type": "string",
+            "example": "2026-10-06T15:15:00.000Z",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "quoteId",
+          "isRefundable",
+          "refundAmount",
+          "penaltyAmount",
+          "currency",
+          "expiresAt"
+        ]
+      },
+      "SolicitudCancelacionDto": {
+        "type": "object",
+        "properties": {
+          "quoteId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "quoteId de GET .../cancellation-quote"
+          },
+          "reason": {
+            "type": "string",
+            "example": "Cambio de planes",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "quoteId"
+        ]
+      },
+      "TramoSolicitadoDto": {
+        "type": "object",
+        "properties": {
+          "origin": {
+            "type": "string",
+            "example": "UIO",
+            "pattern": "^[A-Z]{3}$"
+          },
+          "destination": {
+            "type": "string",
+            "example": "GYE",
+            "pattern": "^[A-Z]{3}$"
+          },
+          "departureDate": {
+            "type": "string",
+            "example": "2026-10-24",
+            "format": "date",
+            "description": "Fecha local de salida en el aeropuerto de origen (la semilla cubre 90 días)"
+          }
+        },
+        "required": [
+          "origin",
+          "destination",
+          "departureDate"
+        ]
+      },
+      "SolicitudBusquedaDto": {
+        "type": "object",
+        "properties": {
+          "itineraries": {
+            "minItems": 1,
+            "maxItems": 6,
+            "example": [
+              {
+                "origin": "UIO",
+                "destination": "GYE",
+                "departureDate": "2026-10-24"
+              }
+            ],
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TramoSolicitadoDto"
+            }
+          },
+          "passengers": {
+            "$ref": "#/components/schemas/PasajerosDto"
+          }
+        },
+        "required": [
+          "itineraries",
+          "passengers"
+        ]
+      },
+      "AerolineaOfertaDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "AV"
+          },
+          "name": {
+            "type": "string",
+            "example": "Avianca"
+          }
+        },
+        "required": [
+          "code",
+          "name"
+        ]
+      },
+      "OfertaVueloDto": {
+        "type": "object",
+        "properties": {
+          "offerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "airline": {
+            "$ref": "#/components/schemas/AerolineaOfertaDto"
+          },
+          "itineraries": {
+            "description": "En el orden de los tramos pedidos",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpcionItinerarioDto"
+            }
+          },
+          "grandTotal": {
+            "description": "Todos los pasajeros con la familia más barata de cada itinerario",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MontoDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "offerId",
+          "airline",
+          "itineraries",
+          "grandTotal"
+        ]
+      },
+      "RespuestaBusquedaDto": {
+        "type": "object",
+        "properties": {
+          "totalOffers": {
+            "type": "number",
+            "example": 2,
+            "description": "Ofertas devueltas en `offers`"
+          },
+          "offers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OfertaVueloDto"
+            }
+          }
+        },
+        "required": [
+          "totalOffers",
+          "offers"
+        ]
+      },
+      "AsientoMapaDto": {
+        "type": "object",
+        "properties": {
+          "seatNumber": {
+            "type": "string",
+            "example": "12A",
+            "description": "Fila y letra"
+          },
+          "isAvailable": {
+            "type": "boolean",
+            "example": true,
+            "description": "false si ya está asignado en una reserva o su cabina no se vende en esta salida"
+          },
+          "characteristics": {
+            "type": "array",
+            "example": [
+              "WINDOW"
+            ],
+            "items": {
+              "type": "string",
+              "enum": [
+                "WINDOW",
+                "AISLE",
+                "EXTRA_LEGROOM",
+                "EMERGENCY_EXIT"
+              ]
+            }
+          }
+        },
+        "required": [
+          "seatNumber",
+          "isAvailable",
+          "characteristics"
+        ]
+      },
+      "FilaMapaDto": {
+        "type": "object",
+        "properties": {
+          "rowNumber": {
+            "type": "number",
+            "example": 12
+          },
+          "seats": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AsientoMapaDto"
+            }
+          }
+        },
+        "required": [
+          "rowNumber",
+          "seats"
+        ]
+      },
+      "CabinaMapaOfertaDto": {
+        "type": "object",
+        "properties": {
+          "cabinClass": {
+            "type": "string",
+            "enum": [
+              "ECONOMY",
+              "PREMIUM_ECONOMY",
+              "BUSINESS",
+              "FIRST"
+            ],
+            "example": "ECONOMY"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FilaMapaDto"
+            }
+          }
+        },
+        "required": [
+          "cabinClass",
+          "rows"
+        ]
+      },
+      "MapaAsientosOfertaDto": {
+        "type": "object",
+        "properties": {
+          "segmentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "cabins": {
+            "description": "En el orden de las filas",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CabinaMapaOfertaDto"
+            }
+          }
+        },
+        "required": [
+          "segmentId",
+          "cabins"
         ]
       },
       "OpcionEquipajeDto": {
@@ -11512,63 +12711,6 @@
           "totalBaggage"
         ]
       },
-      "CotizacionCancelacionDto": {
-        "type": "object",
-        "properties": {
-          "quoteId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "isRefundable": {
-            "type": "boolean",
-            "example": true,
-            "description": "Si se devuelve algo (refundAmount mayor que 0)"
-          },
-          "refundAmount": {
-            "type": "string",
-            "example": "58.84"
-          },
-          "penaltyAmount": {
-            "type": "string",
-            "example": "15.08"
-          },
-          "currency": {
-            "type": "string",
-            "example": "USD"
-          },
-          "expiresAt": {
-            "type": "string",
-            "example": "2026-10-06T15:15:00.000Z",
-            "format": "date-time"
-          }
-        },
-        "required": [
-          "quoteId",
-          "isRefundable",
-          "refundAmount",
-          "penaltyAmount",
-          "currency",
-          "expiresAt"
-        ]
-      },
-      "SolicitudCancelacionDto": {
-        "type": "object",
-        "properties": {
-          "quoteId": {
-            "type": "string",
-            "format": "uuid",
-            "description": "quoteId de GET .../cancellation-quote"
-          },
-          "reason": {
-            "type": "string",
-            "example": "Cambio de planes",
-            "maxLength": 500
-          }
-        },
-        "required": [
-          "quoteId"
-        ]
-      },
       "CambioPedidoDto": {
         "type": "object",
         "properties": {
@@ -11579,7 +12721,7 @@
           },
           "newDepartureDate": {
             "type": "string",
-            "example": "2026-10-28",
+            "example": "2026-10-31",
             "format": "date",
             "description": "Nueva fecha local de salida en el origen del itinerario"
           }
