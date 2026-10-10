@@ -30,7 +30,8 @@ jsx-a11y, import-x). E2E con Playwright (`npm run e2e`).
 - Sesión: access token solo en memoria; refresh en `sessionStorage`; una sola renovación a la vez
   (promesa compartida + Web Locks + BroadcastChannel). La interfaz nunca envía un rol.
 - Desarrollo local: `npm run dev` usa el proxy `/flights` → `BACKEND_URL` (ver README). Ningún dato ni texto de ejemplo en producción.
-- Reservas, Auditoría y Administradores no tienen endpoint admin: son pantallas "Pendiente en la API", no se simulan.
+- Administradores, Auditoría y Reservas usan `/admin/users`, `/admin/audit-log` y `/admin/bookings`. La cancelación de una reserva lleva una `Idempotency-Key` por intento (la misma si se reintenta). El `before`/`after` de auditoría llega censurado (`[REDACTED]`): se muestra tal cual.
+- Un `aria-label` debe contener el texto visible del botón (axe `label-content-name-mismatch`).
 
 ## Accesibilidad (WCAG 2.2 AA)
 
