@@ -64,7 +64,9 @@ export function createHttpClient({
   const base = baseUrl.replace(/\/+$/, '');
 
   async function attempt<T>(method: string, path: string, options: RequestOptions): Promise<T> {
-    const url = new URL(`${base}${path}`);
+    // Con una base relativa ("/flights/v1", desarrollo con proxy) se resuelve contra el origen de la página.
+    const origin = typeof window === 'undefined' ? undefined : window.location.origin;
+    const url = new URL(`${base}${path}`, origin);
     for (const [k, v] of Object.entries(options.query ?? {})) url.searchParams.set(k, v);
 
     const headers: Record<string, string> = { Accept: 'application/json', ...options.headers };

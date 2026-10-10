@@ -39,6 +39,19 @@ afterEach(() => {
 });
 
 describe('cliente HTTP', () => {
+  it('resuelve una base relativa contra el origen de la página (proxy de desarrollo)', async () => {
+    vi.stubGlobal('window', { location: { origin: 'http://localhost:5174' } });
+    try {
+      const fetchImpl = vi.fn(async () => json(200, { ok: true }));
+      const http = createHttpClient({ baseUrl: '/flights/v1', fetchImpl: fetchImpl as unknown as typeof fetch });
+      await http.request('POST', '/auth/login', { body: {} });
+      const [url] = fetchImpl.mock.calls[0] as unknown as [URL];
+      expect(url.href).toBe('http://localhost:5174/flights/v1/auth/login');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('arma la URL con query, envía JSON con Accept y devuelve el cuerpo', async () => {
     const { http, fetchImpl } = client([json(200, { ok: true })]);
     await expect(http.request('POST', '/search', { body: { a: 1 }, query: { x: 'y' } })).resolves.toEqual({ ok: true });
