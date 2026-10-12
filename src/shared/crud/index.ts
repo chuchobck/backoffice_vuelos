@@ -1,3 +1,4 @@
 export { ResourceScreen, normalizeText } from './ResourceScreen';
 export { optionSource, type DetailRow, type FieldSpec, type FilterSpec, type FormConfig, type FormDialogProps, type OptionSource, type ResourceConfig } from './types';
+export { ResourceFilters } from './ResourceFilters';
 export { useOptions } from './useOptions';

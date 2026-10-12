@@ -1,6 +1,6 @@
 import type { FieldError, FieldValues, UseFormRegister } from 'react-hook-form';
 import { cn } from '@/shared/lib/cn';
-import { Field, Input } from '@/shared/ui';
+import { Field, Input, PasswordInput } from '@/shared/ui';
 import type { FieldSpec } from './types';
 
 type TextSpec = Extract<FieldSpec, { kind: 'text' }>;
@@ -20,6 +20,9 @@ export function ResourceTextField({
 }) {
   return (
     <Field id={id} label={spec.label} hint={spec.hint} error={error?.message} required={required}>
+      {spec.inputType === 'password' ? (
+        <PasswordInput {...register(spec.name)} maxLength={spec.maxLength} autoComplete={spec.autoComplete ?? 'new-password'} />
+      ) : (
       <Input
         {...register(spec.name)}
         type={spec.inputType ?? 'text'}
@@ -31,6 +34,7 @@ export function ResourceTextField({
         autoCapitalize={spec.upper ? 'characters' : 'none'}
         className={cn(spec.upper && 'uppercase')}
       />
+      )}
     </Field>
   );
 }

@@ -7,7 +7,7 @@ import type {
   AircraftModel, Airline, Airport, City, Country, CreateAircraftModel, CreateAirline, CreateAirport, CreateCity, CreateCountry,
   CreateDeparture, CreateFare, CreateFareFamily, CreateFlightNumber, CreateSeatMap, Departure, Fare, FareFamily, FlightNumber,
   SeatMap, SeatMapSummary, UpdateAircraftModel, UpdateAirline, UpdateAirport, UpdateCity, UpdateCountry, UpdateDeparture,
-  UpdateFare, UpdateFareFamily, UpdateFlightNumber, UpdateSeatMap, UserDto,
+  UpdateFare, UpdateFareFamily, UpdateFlightNumber, UpdateSeatMap, UserDto, AdminUser, AuditEvent, BookingDetail, BookingSummary, CreateAdminUser,
 } from './contract';
 
 export interface Page<T> {
@@ -60,7 +60,22 @@ export interface AuthApi {
 
 export type ResourceName =
   | 'countries' | 'cities' | 'airports' | 'airlines' | 'aircraftModels' | 'fareFamilies'
-  | 'seatMaps' | 'flightNumbers' | 'departures' | 'fares';
+  | 'seatMaps' | 'flightNumbers' | 'departures' | 'fares' | 'admins';
+
+/** Registro de auditoría: solo lectura, por cursor. Los filtros van en `filters` (table, operation, recordId, userId, from, to). */
+export interface AuditLogApi {
+  list(query?: ListQuery): Promise<Page<AuditEvent>>;
+}
+
+/**
+ * Reservas de todos los clientes. Filtros en `filters`: pnr, status, createdFrom, createdTo, ownerEmail, flightNumber.
+ * `cancel` exige una Idempotency-Key: la misma clave repite el resultado en vez de cancelar dos veces.
+ */
+export interface BookingsApi {
+  list(query?: ListQuery): Promise<Page<BookingSummary>>;
+  get(bookingId: string): Promise<BookingDetail>;
+  cancel(bookingId: string, idempotencyKey: string, reason?: string): Promise<BookingDetail>;
+}
 
 export interface AdminApi {
   auth: AuthApi;
@@ -75,6 +90,13 @@ export interface AdminApi {
   flightNumbers: Resource<FlightNumber, CreateFlightNumber, UpdateFlightNumber>;
   departures: Resource<Departure, CreateDeparture, UpdateDeparture>;
   fares: Resource<Fare, CreateFare, UpdateFare>;
+  /**
+   * Administradores (/admin/users): la API solo lista, crea y da de baja. `get`, `update` y `reactivate`
+   * no existen en el backend y la interfaz nunca los llama.
+   */
+  admins: Resource<AdminUser, CreateAdminUser, never>;
+  auditLog: AuditLogApi;
+  bookings: BookingsApi;
 }
 
 /** Ruta de cada recurso bajo /flights/v1/admin. */
@@ -89,4 +111,8 @@ export const RESOURCE_PATHS: Record<ResourceName, string> = {
   flightNumbers: '/admin/flights',
   departures: '/admin/departures',
   fares: '/admin/fares',
+  admins: '/admin/users',
 };
+
+export const AUDIT_LOG_PATH = '/admin/audit-log';
+export const BOOKINGS_PATH = '/admin/bookings';

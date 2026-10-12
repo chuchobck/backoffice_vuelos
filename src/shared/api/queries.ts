@@ -2,7 +2,7 @@
  * Estado del servidor con TanStack Query: un hook por operación de `AdminApi`. Toda escritura
  * invalida las consultas del recurso (y las de los recursos que dependen de él, si se indican).
  */
-import { useMutation, useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
 import type { AdminApi, ListQuery, Page, Resource, ResourceName } from './AdminApi';
 import { adminApi } from './instance';
 
@@ -106,4 +106,58 @@ export function useDeactivateMutation<N extends ResourceName>(name: N, also: Res
 export function useReactivateMutation<N extends ResourceName>(name: N, also: ResourceName[] = []) {
   const invalidate = useInvalidate(name, also);
   return useMutation({ mutationFn: (id: string) => resourceOf(name).reactivate(id), onSuccess: invalidate });
+}
+
+/** Filtros de una lista de solo lectura (auditoría, reservas); los vacíos se ignoran. */
+export type Filters = Record<string, string | undefined>;
+
+export const auditKeys = {
+  all: ['admin', 'auditLog'] as const,
+  list: (filters: Filters, limit: number) => ['admin', 'auditLog', 'list', filters, limit] as const,
+};
+
+export const bookingKeys = {
+  all: ['admin', 'bookings'] as const,
+  list: (filters: Filters, limit: number) => ['admin', 'bookings', 'list', filters, limit] as const,
+  detail: (id: string) => ['admin', 'bookings', 'detail', id] as const,
+};
+
+/** Eventos de auditoría, de a una página; `fetchNextPage` sigue el `nextCursor` ("Cargar más"). */
+export function useAuditLog(filters: Filters, limit = 20) {
+  return useInfiniteQuery({
+    queryKey: auditKeys.list(filters, limit),
+    queryFn: ({ pageParam }) => adminApi.auditLog.list({ filters, limit, cursor: pageParam }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (last) => last.nextCursor,
+  });
+}
+
+/** Reservas de todos los clientes, de a una página, con "Cargar más". */
+export function useBookings(filters: Filters, limit = 20) {
+  return useInfiniteQuery({
+    queryKey: bookingKeys.list(filters, limit),
+    queryFn: ({ pageParam }) => adminApi.bookings.list({ filters, limit, cursor: pageParam }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (last) => last.nextCursor,
+  });
+}
+
+export function useBooking(id: string | undefined) {
+  return useQuery({
+    queryKey: bookingKeys.detail(id ?? ''),
+    queryFn: () => adminApi.bookings.get(id ?? ''),
+    enabled: !!id,
+  });
+}
+
+/**
+ * Cancelación administrativa. La Idempotency-Key la pone quien llama (una por intento): reintentar con la
+ * misma clave repite el resultado en vez de cancelar dos veces.
+ */
+export function useCancelBooking() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, key, reason }: { id: string; key: string; reason?: string }) => adminApi.bookings.cancel(id, key, reason),
+    onSuccess: () => Promise.all([qc.invalidateQueries({ queryKey: bookingKeys.all }), qc.invalidateQueries({ queryKey: auditKeys.all })]),
+  });
 }

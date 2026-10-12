@@ -292,6 +292,85 @@ async function main() {
       await page.context().close();
     }
 
+    /* ---------------------------------------------------------------- Administración */
+    group('Administradores, auditoría y reservas');
+    {
+      const { page, errors } = await newPage(browser, { width: 1280, height: 900 }, external);
+      await loginAdmin(page, '/administradores');
+      await check('administradores: lista, marca la propia cuenta y bloquea su baja', async () => {
+        await page.getByRole('heading', { level: 1, name: 'Administradores' }).waitFor();
+        await page.getByRole('cell', { name: 'operaciones@quinde.test', exact: true }).waitFor();
+        const own = page.getByRole('button', { name: 'Dar de baja administrador admin@quinde.test' });
+        eq(await own.getAttribute('aria-disabled'), 'true', 'baja propia bloqueada');
+        await own.click({ force: true }); // aria-disabled: Playwright no lo considera "habilitado", pero un usuario sí puede pulsarlo
+        eq(await page.getByRole('alertdialog').count(), 0, 'no abre el diálogo');
+        await axeScan(page, 'administradores');
+      });
+      await check('administradores: crear (valida, 409 de correo repetido, éxito) y dar de baja', async () => {
+        await page.getByRole('button', { name: 'Nuevo administrador' }).click();
+        const dialog = page.getByRole('dialog');
+        await page.waitForTimeout(500); // termina la animación de entrada antes de medir el contraste
+        await axeScan(page, 'diálogo crear administrador');
+        await dialog.getByRole('button', { name: 'Crear' }).click();
+        await dialog.getByText('Este campo es obligatorio.').first().waitFor();
+        await dialog.getByLabel(/Correo electrónico/).fill('operaciones@quinde.test');
+        await dialog.getByLabel(/^Contraseña/).fill('una frase larga de prueba');
+        await dialog.getByRole('button', { name: 'Crear' }).click();
+        await dialog.getByText('Ya existe una cuenta con ese correo.').waitFor();
+        await dialog.getByLabel(/Correo electrónico/).fill('nuevo.admin@quinde.test');
+        await dialog.getByRole('button', { name: 'Crear' }).click();
+        await page.getByRole('cell', { name: 'nuevo.admin@quinde.test', exact: true }).waitFor();
+        await page.getByRole('button', { name: 'Dar de baja administrador nuevo.admin@quinde.test' }).click();
+        eq(await page.evaluate(() => document.activeElement?.textContent), 'No, mantener', 'foco inicial seguro');
+        await page.getByRole('alertdialog').getByRole('button', { name: 'Dar de baja' }).click();
+        await page.getByRole('cell', { name: 'nuevo.admin@quinde.test', exact: true }).waitFor({ state: 'detached' });
+      });
+      await check('auditoría: filtra, expande el diff con [REDACTED] y carga más', async () => {
+        await page.goto(`${BASE}/auditoria`);
+        await page.getByRole('heading', { level: 1, name: 'Auditoría' }).waitFor();
+        await page.getByText(/\d+ evento\(s\) cargado\(s\)/).waitFor();
+        await page.getByRole('button', { name: 'Cargar más' }).click();
+        await page.getByText(/^(2[5-9]|[3-9]\d) evento/).waitFor();
+        await page.getByRole('textbox', { name: 'Tabla' }).fill('usuario');
+        await page.getByRole('button', { name: 'Aplicar filtros' }).click();
+        await page.getByRole('button', { name: /\(Alta en usuario\)/ }).first().waitFor();
+        await page.getByRole('button', { name: /\(Alta en usuario\)/ }).first().click();
+        await page.getByText('[REDACTED]').first().waitFor();
+        eq(await page.getByRole('button', { name: /Ocultar cambios/ }).first().getAttribute('aria-expanded'), 'true', 'aria-expanded');
+        await axeScan(page, 'auditoría con diff');
+      });
+      await check('reservas: filtra, ve el detalle y cancela con confirmación explícita', async () => {
+        await page.goto(`${BASE}/reservas`);
+        await page.getByRole('heading', { level: 1, name: 'Reservas' }).waitFor();
+        await page.getByText('12 reserva(s) cargada(s)').waitFor();
+        await axeScan(page, 'reservas');
+        await page.getByLabel('Estado').selectOption('CANCELLED');
+        await page.getByText('2 reserva(s) cargada(s)').waitFor();
+        await page.getByLabel('Estado').selectOption('');
+        await page.getByText('12 reserva(s) cargada(s)').waitFor();
+        await page.getByRole('button', { name: 'Ver detalle de la reserva K7M2QX' }).click();
+        await page.getByRole('heading', { name: 'Pasajeros' }).waitFor();
+        await page.waitForTimeout(500);
+        await axeScan(page, 'detalle de reserva');
+        await page.keyboard.press('Escape');
+        await page.getByRole('dialog').waitFor({ state: 'detached' });
+        await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Ver detalle de la reserva K7M2QX').catch(() => undefined);
+        eq(await page.evaluate(() => document.activeElement?.getAttribute('aria-label')), 'Ver detalle de la reserva K7M2QX', 'el foco vuelve al botón');
+        await page.getByRole('button', { name: 'Cancelar reserva K7M2QX' }).click();
+        eq(await page.evaluate(() => document.activeElement?.textContent), 'No, mantener', 'foco inicial seguro');
+        await page.waitForTimeout(500); // termina la animación de entrada antes de medir el contraste
+        await axeScan(page, 'confirmar cancelación');
+        await page.getByRole('alertdialog').getByRole('button', { name: 'Sí, cancelar la reserva' }).click();
+        await page.getByText('La reserva K7M2QX quedó cancelada.', { exact: true }).waitFor();
+        await page.getByRole('button', { name: 'Cancelar reserva K7M2QX' }).waitFor({ state: 'detached' });
+      });
+      await check('el menú ya no marca ninguna pantalla como pendiente', async () => {
+        eq(await page.getByText('Pendiente en la API').count(), 0, 'textos de pendiente');
+      });
+      await check('sin errores en la consola', async () => eq(errors, [], 'errores'));
+      await page.context().close();
+    }
+
     /* ---------------------------------------------------------------- Viewports */
     group('Responsive: 320, 768 y 1280 px');
     const pages = ['/panel', '/vuelos', '/vuelos/crear', '/numeros-de-vuelo', '/rutas', '/tarifas', '/aeropuertos', '/familias-tarifarias', '/mapas-de-asientos', '/reservas', '/auditoria', '/administradores'];
@@ -311,7 +390,7 @@ async function main() {
       });
       await check(`${width}px: botones, enlaces del menú y campos miden al menos 44 px`, async () => {
         const bad = [];
-        for (const path of ['/panel', '/vuelos', '/aeropuertos', '/vuelos/crear']) {
+        for (const path of ['/panel', '/vuelos', '/aeropuertos', '/vuelos/crear', '/reservas', '/auditoria', '/administradores']) {
           await page.goto(BASE + path);
           await page.locator('h1').waitFor();
           await page.waitForTimeout(300);
@@ -336,6 +415,8 @@ async function main() {
           assert(await page.getByRole('dialog').getByRole('navigation', { name: 'Navegación principal' }).isVisible(), 'sin menú');
           await page.keyboard.press('Escape');
           await page.getByRole('dialog').waitFor({ state: 'detached' });
+          // El foco vuelve al botón justo después de cerrar el diálogo: se espera en vez de leerlo en el mismo instante
+          await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Abrir menú de navegación').catch(() => undefined);
           eq(await page.evaluate(() => document.activeElement?.getAttribute('aria-label')), 'Abrir menú de navegación', 'foco devuelto');
           await page.screenshot({ path: `${OUT}panel-320.png`, fullPage: true });
         });
@@ -385,6 +466,7 @@ async function main() {
         await page.getByRole('dialog').waitFor();
         await page.keyboard.press('Escape');
         await page.getByRole('dialog').waitFor({ state: 'detached' });
+        await page.waitForFunction(() => document.activeElement?.textContent?.trim() === 'Nueva aerolínea').catch(() => undefined);
         eq(await page.evaluate(() => document.activeElement?.textContent?.trim()), 'Nueva aerolínea', 'foco devuelto al botón');
       });
       await check('Tab dentro de un diálogo nunca sale de él (foco atrapado)', async () => {
@@ -404,7 +486,7 @@ async function main() {
     {
       const { page } = await newPage(browser, { width: 1280, height: 900 }, external);
       await loginAdmin(page, '/panel');
-      const screens = ['/panel', '/vuelos', '/vuelos/crear', '/tarifas', '/aeropuertos', '/mapas-de-asientos', '/rutas', '/reservas'];
+      const screens = ['/panel', '/vuelos', '/vuelos/crear', '/tarifas', '/aeropuertos', '/mapas-de-asientos', '/rutas', '/reservas', '/auditoria', '/administradores'];
       for (const dark of [false, true]) {
         await page.evaluate((d) => document.documentElement.classList.toggle('dark', d), dark);
         for (const path of screens) {

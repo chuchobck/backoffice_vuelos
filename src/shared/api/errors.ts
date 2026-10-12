@@ -67,6 +67,11 @@ const BUSINESS_RULES: [RegExp, string][] = [
   [/already departed/i, e.business.alreadyDeparted],
   [/scheduled in the past/i, e.business.inPast],
   [/reactivate it first/i, e.business.reactivateFirst],
+  [/your own account/i, e.business.ownAccount],
+  [/last active administrator/i, e.business.lastAdmin],
+  [/account with that email|email.*already|uq_usuario_correo/i, e.business.accountExists],
+  [/payment pending/i, e.business.paymentPending],
+  [/different request body/i, e.business.keyReused],
   [/already exists|already been used|is repeated|duplicate/i, e.business.duplicate],
 ];
 
@@ -88,11 +93,18 @@ export function errorMessage(error: unknown): string {
   if (!isApiError(error)) return e.unknown;
   switch (error.code) {
     case 'NOT_CONNECTED':
-      return e.notConnected;
+      // Con una ruta en `detail`, el endpoint no existe en la API desplegada (ver RealAdminApi.ifEndpointExists)
+      return error.detail?.startsWith('/') ? fmt(e.endpointMissing, { path: `/flights/v1${error.detail}` }) : e.notConnected;
     case 'TIMEOUT':
       return e.timeout;
     case 'NETWORK':
       return e.network;
+    case 'ALREADY_CANCELLED':
+      return e.business.alreadyCancelled;
+    case 'BOOKING_NOT_CONFIRMED':
+      return e.business.notConfirmed;
+    case 'FLIGHT_ALREADY_DEPARTED':
+      return e.business.alreadyDeparted;
     default:
       break;
   }

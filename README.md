@@ -15,8 +15,17 @@ Qué permite hacer:
 - **Panel** con conteos reales, **búsqueda en todas las páginas**, orden por columna, detalle de cada registro y **avisos de
   cordura** al editar tarifas (por ejemplo, un total de 4128.00 en un vuelo nacional).
 
-> Reservas, Auditoría y Administradores aparecen en el menú como **"Pendiente en la API"**: el backend todavía no tiene
-> esos endpoints de administración. No se simulan. Ver [Endpoints que faltan](#endpoints-que-faltan-en-el-backend).
+- **Administradores**: lista, crear (correo y contraseña de 12 a 128, con aviso si el correo ya existe) y dar de baja con
+  confirmación; la baja de la propia cuenta está bloqueada y, si el servidor rechaza la del último administrador, se muestra el motivo.
+- **Reservas** de todos los clientes: filtros (PNR, estado, fechas, correo del cliente, número de vuelo), "Cargar más", detalle
+  (itinerarios, pasajeros, boletos, historial) y **cancelación administrativa** con confirmación explícita y una `Idempotency-Key`
+  por intento.
+- **Auditoría** (solo lectura): filtros (tabla, operación, usuario, id del registro, fechas), "Cargar más" y fila expandible con el
+  diff antes/después; los valores sensibles llegan censurados como `[REDACTED]` y se muestran tal cual.
+
+> Estas tres pantallas usan los endpoints `/admin/users`, `/admin/audit-log` y `/admin/bookings` del backend
+> ([PR 2 de `backend_vuelos`](https://github.com/chuchobck/backend_vuelos/pull/2)). **Hasta que ese cambio esté desplegado en
+> la API de producción, responderán 404** ("la API no tiene ese endpoint"). Ver [Probar las pantallas de administración](#probar-las-pantallas-de-administración-contra-tu-backend-local).
 
 ## Contenido
 
@@ -47,7 +56,7 @@ src/
 ```
 
 Módulos de `features/`: `auth`, `dashboard`, `flights-wizard`, `departures`, `fares`, `flight-numbers`, `routes`, `airports`,
-`airlines`, `aircraft-models`, `fare-families`, `seat-maps`, `cities`, `countries`, `pending`.
+`airlines`, `aircraft-models`, `fare-families`, `seat-maps`, `cities`, `countries`, `admins`, `audit`, `bookings`.
 
 Reglas (las revisa `npm run lint`, ver `eslint.config.js`):
 
@@ -173,8 +182,9 @@ sigue intacto (también en `legacy/`).
 
 ## Endpoints que usa
 
-Todos bajo `API_URL` (`…/flights/v1`). Los de `/admin` exigen el scope `flights:admin`. Las escrituras de administración
-**no piden `Idempotency-Key`** en el backend, por eso la interfaz no la envía.
+Todos bajo `API_URL` (`…/flights/v1`). Los de `/admin` exigen el scope `flights:admin`. Las escrituras del catálogo
+**no piden `Idempotency-Key`** en el backend, por eso la interfaz no la envía; la **cancelación de una reserva sí la exige**: se
+genera una por intento (al abrir el diálogo de confirmación) y se reusa si hay que reintentar por un fallo de red.
 
 | Área | Endpoints |
 | --- | --- |
@@ -189,6 +199,9 @@ Todos bajo `API_URL` (`…/flights/v1`). Los de `/admin` exigen el scope `flight
 | Números de vuelo | `/admin/flights` y `/admin/flights/{flightNumber}` (+ `/reactivate`) |
 | Salidas | `/admin/departures` y `/admin/departures/{id}` (+ `/reactivate`); `DELETE` = cancelar (`CANCELLED`) |
 | Tarifas | `/admin/fares` y `/admin/fares/{id}` (+ `/reactivate`) |
+| Administradores | `GET`, `POST /admin/users` · `DELETE /admin/users/{id}` (baja lógica; sin detalle, edición ni reactivación) |
+| Auditoría | `GET /admin/audit-log` (`table`, `operation`, `recordId`, `userId`, `from`, `to`, `limit` hasta 100, `cursor`) |
+| Reservas | `GET /admin/bookings` (`pnr`, `status`, `createdFrom`, `createdTo`, `ownerEmail`, `flightNumber`) · `GET /admin/bookings/{bookingId}` · `POST /admin/bookings/{bookingId}/cancel` (con `Idempotency-Key`) |
 
 Cada recurso de `/admin` usa `GET` (lista con `limit` 1–50, `cursor`, `includeInactive` y sus filtros: país, ciudad, aerolínea,
 cabina, equipo, origen, destino, número de vuelo, fechas, estado, familia), `GET /{id}`, `POST` (201), `PATCH /{id}` (parcial),
@@ -198,20 +211,25 @@ API **no** filtra por texto: "Buscar en todas las páginas" recorre las páginas
 Errores: se leen como `application/problem+json` y se traducen a mensajes en español para 400, 401, 403, 404, 409, 422 y
 429 (con `Retry-After`); nunca se muestra el `detail` técnico.
 
-## Endpoints que faltan en el backend
+## Probar las pantallas de administración contra tu backend local
 
-Verificado contra el OpenAPI del backend (55 rutas), `docs/DISCREPANCIAS-CONTRATO.md` y los controladores: **no hay**
-endpoints de administración para estas tres pantallas, que quedan visibles en el menú como "Pendiente en la API" (con la
-misma especificación escrita en la propia pantalla). No se simulan.
+Los tres endpoints nuevos están en la rama `feat/admin-auditoria-usuarios-reservas` de `backend_vuelos`. Pasos exactos:
 
-| Pantalla | Por qué no se puede hoy | Endpoints que haría falta agregar (propuestos, `flights:admin`, paginación por cursor, ProblemDetails) |
-| --- | --- | --- |
-| **Reservas** | `GET /bookings` solo devuelve las reservas del usuario autenticado (el dueño sale del token): un administrador no ve las de los clientes. | `GET /admin/bookings` (filtros `pnr`, `status`, `createdFrom`, `createdTo`, `ownerEmail`, `flightNumber`); `GET /admin/bookings/{bookingId}` (detalle); opcional `POST /admin/bookings/{bookingId}/cancel` con `Idempotency-Key` y auditoría. |
-| **Auditoría** | La base registra cada INSERT/UPDATE/DELETE en la tabla `auditoria` (tabla, operación, registro, usuario, IP, datos anteriores y nuevos), pero la API no la expone. | `GET /admin/audit-log` (filtros `table`, `operation`, `recordId`, `userId`, `from`, `to`; campos `id`, `occurredAt`, `table`, `operation`, `recordId`, `userId`, `ipAddress`, `before`, `after`). |
-| **Administradores** | `POST /auth/register` es público y solo crea el rol `cliente`; no existe ruta para crear o asignar el rol de administrador (hoy se siembra en la base). | `POST /admin/users` (`{ email, password }`; el servidor fija el rol; 409 si el correo existe), `GET /admin/users`, `DELETE /admin/users/{id}` (baja lógica). La interfaz nunca envía un rol. |
+1. En el backend, con su PostgreSQL arriba y esa rama: pon en su `.env` `PORT=3010`, `JWT_SECRET`, `WEBHOOK_SECRET_KEY` y
+   `SEED_ADMIN_PASSWORD` (12 a 128 caracteres), carga la base con `./db/reset.sh` (**solo en tu base local**) y corre `npm run start:dev`.
+2. En este repo, crea `.env.local` con `BACKEND_URL=http://localhost:3010` y corre `npm run dev`.
+3. Ingresa con `admin@quinde.example` (o `SEED_ADMIN_EMAIL`) y tu `SEED_ADMIN_PASSWORD`, y revisa en este orden:
+   **Administradores** (crea uno, intenta crear el mismo correo, dalo de baja; intenta dar de baja tu propia cuenta) →
+   **Auditoría** (filtra por la tabla `usuario` y expande el alta: el hash sale `[REDACTED]`) →
+   **Reservas** (crea una con un cliente de prueba, ábrela, cancélala y mira el historial).
 
-Otras ausencias que se notan en el panel: no hay endpoint de **monedas** (la moneda se escribe, `USD` por defecto), ni de
-**conteo** (el panel cuenta recorriendo las páginas) ni de **texto** (la búsqueda se hace en el navegador).
+Con la API de producción (sin ese cambio desplegado) las tres pantallas muestran "la API no tiene ese endpoint".
+
+## Lo que la API todavía no tiene
+
+No hay endpoint de **monedas** (la moneda se escribe, `USD` por defecto), ni de **conteo** (el panel cuenta recorriendo las
+páginas) ni de **texto** (la búsqueda se hace en el navegador). Los administradores no se pueden editar ni reactivar (solo crear y
+dar de baja), y un administrador dado de baja conserva su token de acceso hasta 15 minutos (se revoca la renovación, no el JWT).
 
 ## Sesión y seguridad
 
@@ -239,12 +257,12 @@ Otras ausencias que se notan en el panel: no hay endpoint de **monedas** (la mon
 
 ## Pruebas
 
-- **Vitest** (`npm test`, ~140 pruebas): validadores y dinero, fechas y zonas, avisos de tarifa, mapeo de errores (ProblemDetails,
+- **Vitest** (`npm test`, ~175 pruebas): validadores y dinero, fechas y zonas, avisos de tarifa, mapeo de errores (ProblemDetails,
   Retry-After), cliente HTTP (reintento solo de lecturas, deduplicación, tiempo agotado), `SessionManager` (renovación única, entre
   pestañas, cierre), integración cliente + sesión (401 → una renovación → reintento), generación de filas de mapas, plan y ejecución
   del asistente (reintento de lo pendiente, 429), y componentes: asistente completo, tabla con baja y reactivación, avisos de tarifa,
-  ruta protegida, pantallas pendientes y panel.
-- **E2E** (`npm run e2e`, Playwright + Chromium contra una API de prueba en memoria, sin red externa): login, asistente completo, un CRUD, 320/768/1280 px (sin
+  ruta protegida y panel, además de los administradores (alta con 409, baja, baja propia bloqueada), la auditoría (filtros, diff, `[REDACTED]`, "Cargar más") y las reservas (filtros, detalle, cancelación con `Idempotency-Key` estable entre reintentos).
+- **E2E** (`npm run e2e`, Playwright + Chromium contra una API de prueba en memoria, sin red externa): login, asistente completo, un CRUD, las tres pantallas de administración, 320/768/1280 px (sin
   scroll horizontal de página y objetivos de 44 px), recorrido con teclado (saltar al contenido, foco al h1, diálogos con foco atrapado y
   Esc) y **axe** (WCAG 2.2 AA) en claro y oscuro. Las capturas quedan en `e2e/out/` (ignorado por git). El script usa el Chromium que
   tenga Playwright; en entornos con `PLAYWRIGHT_BROWSERS_PATH` apunta ahí.

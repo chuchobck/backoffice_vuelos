@@ -9,8 +9,6 @@ export interface NavItem {
   to: string;
   label: string;
   icon: LucideIcon;
-  /** Pantalla sin endpoint en la API: se muestra marcada "Pendiente". */
-  pending?: boolean;
 }
 
 export interface NavGroup {
@@ -36,7 +34,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: paths.flightNumbers, label: n.flightNumbers, icon: Plane },
       { to: paths.routes, label: n.routes, icon: Route },
       { to: paths.fares, label: n.fares, icon: Tags },
-      { to: paths.bookings, label: n.bookings, icon: Ticket, pending: true },
+      { to: paths.bookings, label: n.bookings, icon: Ticket },
     ],
   },
   {
@@ -54,8 +52,8 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: n.control,
     items: [
-      { to: paths.admins, label: n.admins, icon: UserCog, pending: true },
-      { to: paths.audit, label: n.audit, icon: FileClock, pending: true },
+      { to: paths.admins, label: n.admins, icon: UserCog },
+      { to: paths.audit, label: n.audit, icon: FileClock },
     ],
   },
 ];
