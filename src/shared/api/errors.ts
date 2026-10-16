@@ -22,6 +22,8 @@ export interface ApiErrorInit {
   fieldErrors?: FieldError[];
   /** Segundos de espera de la cabecera Retry-After. */
   retryAfter?: number;
+  /** Qué servicio contestó la petición que falló, si es identity (ingreso y administradores). */
+  service?: 'identity';
 }
 
 /** Error normalizado de la capa de datos (ProblemDetails, RFC 9457). */
@@ -32,8 +34,9 @@ export class ApiError extends Error {
   readonly detail?: string;
   readonly fieldErrors: FieldError[];
   readonly retryAfter?: number;
+  readonly service?: 'identity';
 
-  constructor({ status, code, title, detail, fieldErrors = [], retryAfter }: ApiErrorInit) {
+  constructor({ status, code, title, detail, fieldErrors = [], retryAfter, service }: ApiErrorInit) {
     super(detail ?? title ?? code ?? `HTTP ${status}`);
     this.name = 'ApiError';
     this.status = status;
@@ -42,6 +45,7 @@ export class ApiError extends Error {
     this.detail = detail;
     this.fieldErrors = fieldErrors;
     this.retryAfter = retryAfter;
+    this.service = service;
   }
 }
 
@@ -91,6 +95,8 @@ export function fieldLabel(name: string): string {
 /** Mensaje en lenguaje del usuario: qué pasó y qué hacer. Nunca devuelve el `detail` de la API. */
 export function errorMessage(error: unknown): string {
   if (!isApiError(error)) return e.unknown;
+  // identity no configurada, caída o sin ese endpoint (RealAdminApi.viaIdentity): distinto de "el core no tiene el endpoint"
+  if (error.service === 'identity') return e.identityUnavailable;
   switch (error.code) {
     case 'NOT_CONNECTED':
       // Con una ruta en `detail`, el endpoint no existe en la API desplegada (ver RealAdminApi.ifEndpointExists)

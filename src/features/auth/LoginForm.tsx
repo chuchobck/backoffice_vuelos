@@ -75,8 +75,10 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
         <LogIn aria-hidden="true" />
         {a.submit}
       </Button>
-      <p className="text-sm text-muted">
+      <p className="text-sm text-muted break-all">
         {a.apiLabel}: {apiConfig.apiUrl || a.apiMissing}
+        <br />
+        {a.identityLabel}: {apiConfig.identityUrl || a.apiMissing}
       </p>
     </form>
   );

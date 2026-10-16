@@ -111,6 +111,7 @@ export const RESOURCE_PATHS: Record<ResourceName, string> = {
   flightNumbers: '/admin/flights',
   departures: '/admin/departures',
   fares: '/admin/fares',
+  /** Relativa a la base de IDENTITY, no a la del core (ver RealAdminApi). */
   admins: '/admin/users',
 };
 

@@ -6,7 +6,7 @@ import { formatMoney } from '@/shared/lib/money';
 import { Badge, Button, DataTable, EmptyState, ErrorState, type Column } from '@/shared/ui';
 import { BookingDetailDialog } from './BookingDetailDialog';
 import { CancelBookingDialog } from './CancelBookingDialog';
-import { canCancel, STATUS_TONE, statusLabel } from './labels';
+import { canCancel, ownerLabel, STATUS_TONE, statusLabel } from './labels';
 
 const t = es.bookings;
 
@@ -35,7 +35,7 @@ export function BookingsScreen() {
     { id: 'route', header: t.cols.route, cell: (b) => <span className="whitespace-nowrap">{b.origin} → {b.destination}</span> },
     { id: 'date', header: t.cols.date, cell: (b) => <time dateTime={b.departureDate}>{b.departureDate}</time>, className: 'whitespace-nowrap' },
     { id: 'total', header: t.cols.total, cell: (b) => formatMoney(b.grandTotal.total, b.grandTotal.currency), className: 'whitespace-nowrap tabular-nums' },
-    { id: 'owner', header: t.cols.owner, cell: (b) => <span className="break-all">{b.owner.email ?? t.noOwner}</span> },
+    { id: 'owner', header: t.cols.owner, cell: (b) => <span className="[overflow-wrap:anywhere]" title={b.owner.id}>{ownerLabel(b.owner)}</span> },
   ];
 
   return (
