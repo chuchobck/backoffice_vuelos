@@ -340,6 +340,21 @@ describe('cierre de sesión y restauración', () => {
     expect(api.stats.refreshCalls).toBe(refreshes);
   });
 
+  it('identity caída o sin configurar (502, 404 del gateway) al restaurar: "no disponible", sin cerrar la sesión guardada', async () => {
+    for (const status of [502, 503, 504, 404]) {
+      const api = fakeApi(() => T0);
+      const session = memoryStorage();
+      await tab({ api, session }).manager.login({ email: 'a@b.cc', password: 'x'.repeat(12) });
+      api.me = async () => {
+        throw new ApiError({ status, service: 'identity' });
+      };
+      const reloaded = tab({ api, session }).manager;
+      await reloaded.restore();
+      expect(reloaded.getState()).toMatchObject({ status: 'unavailable', user: null, ended: null, restoreError: { service: 'identity', status } });
+      expect(session.dump()['backoffice.auth.refresh']).toBeDefined();
+    }
+  });
+
   it('restaurar dos veces (StrictMode) hace una sola renovación', async () => {
     const api = fakeApi(() => T0);
     const session = memoryStorage();

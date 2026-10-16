@@ -238,4 +238,29 @@ describe('capa real: cliente HTTP + sesión', () => {
       expect(session.getState()).toMatchObject({ status: 'anonymous', ended: 'security' });
     });
   });
+
+  describe('secretos y consola', () => {
+    it('ningún token ni contraseña se escribe en la consola, ni con éxitos ni con errores', async () => {
+      const spies = (['log', 'info', 'warn', 'error', 'debug', 'trace'] as const).map((m) => vi.spyOn(console, m).mockImplementation(() => undefined));
+      try {
+        const password = 'una frase larga y fácil';
+        const { backend, api, session } = setup();
+        // Ingreso correcto, ingreso incorrecto, renovación, alta de un administrador (lleva contraseña), 401 y 502
+        await session.login({ email: 'a@x.co', password });
+        await session.login({ email: 'a@x.co', password: 'otra contraseña secreta larga' }).catch(() => undefined);
+        backend.expireAccess();
+        await api.admins.create({ email: 'nuevo@x.co', password: 'contraseña nueva muy secreta' }).catch(() => undefined);
+        await api.admins.list().catch(() => undefined);
+        await api.airports.list().catch(() => undefined);
+        await session.logout();
+
+        const written = spies.flatMap((spy) => spy.mock.calls).map((args) => args.map((a) => (typeof a === 'string' ? a : JSON.stringify(a))).join(' ')).join('\n');
+        for (const secret of ['acc-', 'ref-', 'Bearer', password, 'otra contraseña secreta larga', 'contraseña nueva muy secreta', 'refresh_token', 'access_token']) {
+          expect(written).not.toContain(secret);
+        }
+      } finally {
+        for (const spy of spies) spy.mockRestore();
+      }
+    });
+  });
 });
