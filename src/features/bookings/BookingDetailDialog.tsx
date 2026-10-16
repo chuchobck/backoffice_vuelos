@@ -3,7 +3,7 @@ import { es, fmt } from '@/shared/i18n';
 import { ECUADOR_ZONE, formatLocal } from '@/shared/lib/dates';
 import { formatMoney } from '@/shared/lib/money';
 import { Badge, Button, Dialog, DialogContent, DialogDescription, DialogTitle, ErrorState, LoadingState, ZonedTime } from '@/shared/ui';
-import { canCancel, STATUS_TONE, statusLabel, ticketStatusLabel } from './labels';
+import { canCancel, ownerLabel, STATUS_TONE, statusLabel, ticketStatusLabel } from './labels';
 
 const t = es.bookings;
 
@@ -25,7 +25,10 @@ function Detail({ booking }: { booking: BookingDetail }) {
           <dt className="font-bold">{t.labels.status}</dt>
           <dd><Badge tone={STATUS_TONE[booking.status]}>{statusLabel(booking.status)}</Badge></dd>
           <dt className="font-bold">{t.labels.owner}</dt>
-          <dd className="break-all">{booking.owner.email ?? t.noOwner}</dd>
+          <dd className="[overflow-wrap:anywhere]">
+            {ownerLabel(booking.owner)}
+            {booking.owner.email === null ? <span className="block text-sm text-muted">{t.noOwnerNote}</span> : null}
+          </dd>
           <dt className="font-bold">{t.labels.total}</dt>
           <dd>{formatMoney(booking.grandTotal.total, booking.grandTotal.currency)}</dd>
           <dt className="font-bold">{t.labels.created}</dt>
