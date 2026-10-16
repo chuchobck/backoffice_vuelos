@@ -29,7 +29,12 @@ jsx-a11y, import-x). E2E con Playwright (`npm run e2e`).
 - Detalle técnico de un error (`detail`) nunca se muestra: se mapea a `shared/i18n` (`shared/api/errors.ts`).
 - Sesión: access token solo en memoria; refresh en `sessionStorage`; una sola renovación a la vez
   (promesa compartida + Web Locks + BroadcastChannel). La interfaz nunca envía un rol.
-- Desarrollo local: `npm run dev` usa el proxy `/flights` → `BACKEND_URL` (ver README). Ningún dato ni texto de ejemplo en producción.
+- Dos servicios detrás del gateway, dos bases (`config.js`): `API_URL` → core (catálogo, auditoría, reservas) e `IDENTITY_URL` →
+  identity (`/auth/*` y `/admin/users`). Si falta `IDENTITY_URL` se deriva de `API_URL` (`/flights/v1` → `/identity/v1`); una
+  configuración inválida detiene la app con una pantalla de error. El enrutado vive solo en `shared/api/RealAdminApi.ts`; el mismo
+  token de acceso va a los dos. Un fallo de identity se marca `service: 'identity'` (mensaje propio, distinto de "el core no tiene el endpoint").
+- Desarrollo local: `npm run dev` reenvía `/flights`, `/identity` y `/graphql` al gateway (`GATEWAY_URL`, ver README). Ningún dato ni texto de ejemplo en producción.
+- Nunca se escribe en consola un token, una contraseña ni una cabecera `Authorization` (una prueba lo vigila).
 - Administradores, Auditoría y Reservas usan `/admin/users`, `/admin/audit-log` y `/admin/bookings`. La cancelación de una reserva lleva una `Idempotency-Key` por intento (la misma si se reintenta). El `before`/`after` de auditoría llega censurado (`[REDACTED]`): se muestra tal cual.
 - Un `aria-label` debe contener el texto visible del botón (axe `label-content-name-mismatch`).
 

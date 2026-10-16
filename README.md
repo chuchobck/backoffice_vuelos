@@ -2,7 +2,8 @@
 
 Sistema de administración del módulo de vuelos del **Booking Prototipo** (proyecto Quinde). Es una aplicación React
 (Vite + TypeScript) que consume la API de vuelos [`backend_vuelos`](https://github.com/chuchobck/backend_vuelos) con una
-cuenta de **administrador** (scope `flights:admin`), en español de Ecuador. Reemplaza al backoffice de un solo
+cuenta de **administrador** (scope `flights:admin`), en español de Ecuador. Todo entra por el **gateway**: el catálogo,
+la auditoría y las reservas son del *core*; el ingreso, la sesión y los administradores son de *identity*. Reemplaza al backoffice de un solo
 `index.html`, que se conserva como referencia en [`legacy/`](legacy/).
 
 Qué permite hacer:
@@ -86,27 +87,29 @@ npm ci
 npm run dev        # http://localhost:5173
 ```
 
-### Contra tu backend local (sin CORS)
+### Contra el gateway local (sin CORS)
 
-En desarrollo (`npm run dev`) el navegador llama a su propio origen (`/flights/v1`) y el servidor de Vite reenvía `/flights` al
-backend indicado por `BACKEND_URL` (por defecto `http://localhost:3000`, el puerto por defecto del backend). `public/config.js`
-(con la URL de producción) **no se usa** en desarrollo, así que no hay CORS ni hace falta tocar `CORS_ORIGINS`.
+Todo entra por el gateway ([`gateway_vuelos`](https://github.com/chuchobck/gateway_vuelos)): `/flights/v1/**` → core,
+`/identity/v1/**` y `/oauth2/token` → identity, `/graphql` → BFF. En desarrollo (`npm run dev`) el navegador llama a su propio
+origen y el servidor de Vite reenvía `/flights`, `/identity` y `/graphql` al gateway indicado por `GATEWAY_URL` (por defecto
+`http://localhost:8080`; `BACKEND_URL` sigue valiendo como nombre antiguo). `public/config.js` (con la URL publicada) **no se usa**
+en desarrollo —el servidor de Vite sirve su propio `/config.js` con `API_URL: "/flights/v1"` e `IDENTITY_URL: "/identity/v1"`—, así
+que no hay CORS ni hace falta tocar `CORS_ORIGINS` de ningún servicio.
 
-Si tu backend corre en otro puerto, copia `.env.example` a `.env.local` (ignorado por git) y ajusta:
+1. Levanta los cinco servicios y el gateway: en `gateway_vuelos`, `scripts/e2e-local.sh --preparar --dejar-arriba` (necesita los
+   repos hermanos `backend_vuelos`, `identity_vuelos`, `notifier_vuelos` y `bff_vuelos` compilados y un PostgreSQL **local**; la guía
+   está en su `docs/E2E-LOCAL.md`). La contraseña del administrador que crea queda en `/var/tmp/quinde-e2e/estado.env`
+   (`admin@e2e.quinde.example`), fuera de cualquier repositorio.
+2. Aquí: `npm ci && npm run dev` (si tu gateway no está en el 8080, copia `.env.example` a `.env.local` y cambia `GATEWAY_URL`).
+3. Ingresa con esa cuenta. **Nunca** pongas credenciales en el código, el README ni los commits.
 
-```bash
-BACKEND_URL=http://localhost:4000
-```
-
-Ingresa con tu cuenta de administrador (el backend la siembra con `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`; **nunca** pongas
-credenciales en el código, el README ni los commits). Para apuntar el desarrollo a otro servidor (por ejemplo el de Render) basta
-con poner esa URL en `BACKEND_URL`.
+Ojo: identity limita el ingreso a 5 intentos por minuto y por IP; al equivocarte varias veces verás "demasiadas solicitudes".
 
 ### Scripts
 
 | Script | Qué hace |
 | --- | --- |
-| `npm run dev` | Servidor de desarrollo (proxy `/flights` → `BACKEND_URL`) |
+| `npm run dev` | Servidor de desarrollo (proxy `/flights`, `/identity` y `/graphql` → `GATEWAY_URL`) |
 | `npm run build` | `tsc -b` + `vite build` → `dist/` |
 | `npm run typecheck` | TypeScript estricto |
 | `npm run lint` | ESLint 9 (typescript-eslint, react-hooks, jsx-a11y, import-x con las reglas de arquitectura) |
@@ -114,21 +117,58 @@ con poner esa URL en `BACKEND_URL`.
 | `npm run e2e` | Compila una versión de pruebas en `dist-e2e/`, levanta `vite preview` y corre Playwright/Chromium (ver [Pruebas](#pruebas)) |
 | `npm run api:types` | Regenera los tipos desde `contracts/backend-openapi.json` |
 
-## Configuración de la URL de la API (`config.js`)
+## Configuración de las URLs (`config.js`)
 
-La URL de la API se lee **en tiempo de ejecución** de `public/config.js` (se copia a `dist/config.js` y se carga desde
-`index.html` antes de la aplicación):
+Las URLs se leen **en tiempo de ejecución** de `public/config.js` (se copia a `dist/config.js` y se carga desde `index.html`
+antes de la aplicación). Hay **dos bases, una por servicio**, las dos detrás del gateway:
 
 ```js
 window.BACKOFFICE_CONFIG = {
-  API_URL: "https://quinde-vuelos-api.onrender.com/flights/v1"
+  API_URL: "https://<gateway>/flights/v1",          // core: catálogo, auditoría, reservas
+  IDENTITY_URL: "https://<gateway>/identity/v1"      // identity: ingreso, sesión, administradores (opcional)
 };
 ```
 
-- Para cambiarla en el sitio publicado basta editar ese archivo: **no hay que recompilar ni usar variables de entorno**
-  en Render. (Se sirve con `Cache-Control: no-cache` en `render.yaml`.)
-- Si el archivo falta o `API_URL` está vacía, se usa la URL de producción de arriba.
-- En desarrollo, `"/flights/v1"` usa el proxy de Vite (ver arriba).
+| Caso | `config.js` |
+| --- | --- |
+| Detrás del gateway (lo normal) | `API_URL: "https://<gateway>/flights/v1"`; `IDENTITY_URL` se **deriva** → `https://<gateway>/identity/v1` |
+| Identity en otro origen o ruta | `API_URL: "https://<gateway>/flights/v1"` y `IDENTITY_URL: "https://<identity>/identity/v1"` |
+| Desarrollo (`npm run dev`) | Lo sirve Vite solo: `API_URL: "/flights/v1"`, `IDENTITY_URL: "/identity/v1"` (rutas del mismo origen) |
+
+**Regla de derivación:** sin `IDENTITY_URL` (ausente o vacía), se toma `API_URL` y se cambia el sufijo `/flights/v1` por
+`/identity/v1` (sin importar mayúsculas; un prefijo antes del sufijo se conserva). Si `API_URL` no termina en `/flights/v1`, no se
+puede derivar y `IDENTITY_URL` es obligatoria.
+
+**Validación al cargar:** cada valor debe ser una URL absoluta `http(s)` sin usuario, consulta ni fragmento, o una ruta del mismo
+origen que empiece con una sola `/`. Si alguno no sirve, la aplicación **no arranca ni hace llamadas**: muestra la pantalla
+"Configuración inválida" con el valor recibido y cómo arreglarlo. El login muestra las dos URLs en uso.
+
+- Para cambiarlas en el sitio publicado basta editar ese archivo: **no hay que recompilar ni usar variables de entorno** en Render.
+  (Se sirve con `Cache-Control: no-cache` en `render.yaml`.)
+- Si el archivo falta o `API_URL` está vacía, se usa la URL de producción por defecto del código (y se deriva identity de ella).
+- Como el navegador llama al gateway desde otro origen, el `CORS_ORIGINS` **del gateway** debe incluir el origen del backoffice
+  (los servicios internos no necesitan CORS).
+
+## Qué ruta va a qué servicio
+
+| Ruta (relativa a la base) | Base | Servicio |
+| --- | --- | --- |
+| `POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout`, `GET /auth/me` | `IDENTITY_URL` | identity |
+| `GET`, `POST /admin/users` · `DELETE /admin/users/{id}` | `IDENTITY_URL` | identity |
+| `GET /health` de identity (despertar el servicio gratuito) | `IDENTITY_URL` | identity |
+| Catálogo: `/admin/countries`, `cities`, `airports`, `airlines`, `aircraft-models`, `fare-families`, `seat-maps`, `flights`, `departures`, `fares` | `API_URL` | core |
+| `GET /admin/audit-log` | `API_URL` | core |
+| `GET /admin/bookings`, `GET /admin/bookings/{id}`, `POST /admin/bookings/{id}/cancel` | `API_URL` | core |
+| `GET /health` del core | `API_URL` | core |
+
+El mismo **token de acceso** (lo emite identity, el core lo verifica con su JWKS) va como `Bearer` a los dos. Las rutas, cuerpos y
+respuestas de identity son los mismos que tenía el core para `/auth` y `/admin/users`, por eso las pantallas no cambiaron. Todo
+esto vive en `shared/api/RealAdminApi.ts`; `/graphql` y `/oauth2/token` no los usa el backoffice.
+
+**Mensajes de error distintos:** si identity no está configurada o no responde (404 en una ruta de colección, 502/503/504 del
+gateway, sin red o tiempo agotado), la interfaz dice que **el servicio de identidad no responde** y que se revise `IDENTITY_URL`.
+Si el que no tiene el endpoint es el core (auditoría o reservas en un core viejo), dice que **la API desplegada no tiene todavía
+el endpoint** y cuál es. Un 401, 403, 409 o 429 de identity conserva su significado (credenciales, permiso, correo repetido, límite).
 
 ## Despliegue en Render (paso a paso)
 
@@ -182,13 +222,13 @@ sigue intacto (también en `legacy/`).
 
 ## Endpoints que usa
 
-Todos bajo `API_URL` (`…/flights/v1`). Los de `/admin` exigen el scope `flights:admin`. Las escrituras del catálogo
+Los de `/admin` exigen el scope `flights:admin`. Las rutas del core cuelgan de `API_URL` (`…/flights/v1`) y las de identity de `IDENTITY_URL` (`…/identity/v1`): ver [Qué ruta va a qué servicio](#qué-ruta-va-a-qué-servicio). Las escrituras del catálogo
 **no piden `Idempotency-Key`** en el backend, por eso la interfaz no la envía; la **cancelación de una reserva sí la exige**: se
 genera una por intento (al abrir el diálogo de confirmación) y se reusa si hay que reintentar por un fallo de red.
 
 | Área | Endpoints |
 | --- | --- |
-| Sesión | `POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout`, `GET /auth/me` (comprueba `flights:admin`), `GET /health` (despertar el servidor) |
+| Sesión (identity) | `POST /identity/v1/auth/login`, `/refresh`, `/logout`, `GET /identity/v1/auth/me` (comprueba `flights:admin`), `GET /identity/v1/health` y `GET /flights/v1/health` (despertar los servicios) |
 | Países | `GET`, `POST /admin/countries` · `GET`, `PATCH`, `DELETE /admin/countries/{code}` · `POST /admin/countries/{code}/reactivate` |
 | Ciudades | `/admin/cities` y `/admin/cities/{id}` (+ `/reactivate`) |
 | Aeropuertos | `/admin/airports` y `/admin/airports/{code}` (+ `/reactivate`) |
@@ -199,7 +239,7 @@ genera una por intento (al abrir el diálogo de confirmación) y se reusa si hay
 | Números de vuelo | `/admin/flights` y `/admin/flights/{flightNumber}` (+ `/reactivate`) |
 | Salidas | `/admin/departures` y `/admin/departures/{id}` (+ `/reactivate`); `DELETE` = cancelar (`CANCELLED`) |
 | Tarifas | `/admin/fares` y `/admin/fares/{id}` (+ `/reactivate`) |
-| Administradores | `GET`, `POST /admin/users` · `DELETE /admin/users/{id}` (baja lógica; sin detalle, edición ni reactivación) |
+| Administradores (identity) | `GET`, `POST /identity/v1/admin/users` · `DELETE /identity/v1/admin/users/{id}` (baja lógica; sin detalle, edición ni reactivación) |
 | Auditoría | `GET /admin/audit-log` (`table`, `operation`, `recordId`, `userId`, `from`, `to`, `limit` hasta 100, `cursor`) |
 | Reservas | `GET /admin/bookings` (`pnr`, `status`, `createdFrom`, `createdTo`, `ownerEmail`, `flightNumber`) · `GET /admin/bookings/{bookingId}` · `POST /admin/bookings/{bookingId}/cancel` (con `Idempotency-Key`) |
 
@@ -211,19 +251,17 @@ API **no** filtra por texto: "Buscar en todas las páginas" recorre las páginas
 Errores: se leen como `application/problem+json` y se traducen a mensajes en español para 400, 401, 403, 404, 409, 422 y
 429 (con `Retry-After`); nunca se muestra el `detail` técnico.
 
-## Probar las pantallas de administración contra tu backend local
+## Probar las pantallas de administración contra el gateway local
 
-Los tres endpoints nuevos están en la rama `feat/admin-auditoria-usuarios-reservas` de `backend_vuelos`. Pasos exactos:
+Con el gateway local arriba (ver [arriba](#contra-el-gateway-local-sin-cors)) y `npm run dev`, ingresa con el administrador de
+`estado.env` y revisa en este orden:
 
-1. En el backend, con su PostgreSQL arriba y esa rama: pon en su `.env` `PORT=3010`, `JWT_SECRET`, `WEBHOOK_SECRET_KEY` y
-   `SEED_ADMIN_PASSWORD` (12 a 128 caracteres), carga la base con `./db/reset.sh` (**solo en tu base local**) y corre `npm run start:dev`.
-2. En este repo, crea `.env.local` con `BACKEND_URL=http://localhost:3010` y corre `npm run dev`.
-3. Ingresa con `admin@quinde.example` (o `SEED_ADMIN_EMAIL`) y tu `SEED_ADMIN_PASSWORD`, y revisa en este orden:
-   **Administradores** (crea uno, intenta crear el mismo correo, dalo de baja; intenta dar de baja tu propia cuenta) →
-   **Auditoría** (filtra por la tabla `usuario` y expande el alta: el hash sale `[REDACTED]`) →
-   **Reservas** (crea una con un cliente de prueba, ábrela, cancélala y mira el historial).
+1. **Administradores** (identity): crea uno, intenta crear el mismo correo (409), dalo de baja; intenta dar de baja tu propia cuenta.
+2. **Auditoría** (core): filtra por una tabla, expande un evento y mira el diff.
+3. **Reservas** (core): ábrela, cancélala y mira el historial. El correo del dueño sale como "Correo no disponible (id…)": el core
+   no conoce las cuentas que solo existen en identity, y su filtro `ownerEmail` tampoco las encuentra.
 
-Con la API de producción (sin ese cambio desplegado) las tres pantallas muestran "la API no tiene ese endpoint".
+Con una API publicada sin el cambio correspondiente, la pantalla afectada lo dice (ver los mensajes de error arriba).
 
 ## Lo que la API todavía no tiene
 
@@ -233,13 +271,13 @@ dar de baja), y un administrador dado de baja conserva su token de acceso hasta 
 
 ## Sesión y seguridad
 
-- Login con correo y contraseña (12 a 128 caracteres, como el backend); **sin credenciales en el código**. Tras ingresar se
-  llama a `/auth/me`: sin `flights:admin` se muestra "tu cuenta no tiene permiso de administrador", se cierra la sesión recién
+- Login con correo y contraseña (12 a 128 caracteres, como identity); **sin credenciales en el código**. Tras ingresar se
+  llama a `/identity/v1/auth/me`: sin `flights:admin` se muestra "tu cuenta no tiene permiso de administrador", se cierra la sesión recién
   abierta y no queda nada guardado. La interfaz **nunca envía un rol**.
 - El **access token vive solo en memoria**; el **refresh token, en `sessionStorage`**. Nunca cookies propias, ni el token en la
   URL ni en logs.
 - **Una sola renovación a la vez** (`features/auth/session.ts`): promesa compartida, **Web Locks** y **BroadcastChannel** entre
-  pestañas, huellas de refresh tokens ya rotados (reusar uno revoca la sesión en el backend). Ante un 401 renueva y reintenta
+  pestañas, huellas de refresh tokens ya rotados (reusar uno revoca la sesión en el backend). Ante un 401 (también del core con un token que emitió identity) renueva por identity y reintenta
   **una** vez; si falla, cierra la sesión por seguridad y vuelve al login conservando a dónde se iba (`?volver=`, solo rutas internas).
 - Cerrar sesión se propaga a las demás pestañas. Las rutas protegidas esperan a que termine la restauración (no redirigen ni
   muestran contenido mientras tanto) y, si no hay conexión al restaurar, lo explican en vez de cerrar la sesión.
