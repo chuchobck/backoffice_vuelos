@@ -9,7 +9,12 @@ function memoryStorage(): StorageLike {
   return { getItem: (k) => data.get(k) ?? null, setItem: (k, v) => void data.set(k, v), removeItem: (k) => void data.delete(k) };
 }
 
+const CORE = 'https://gw.test/flights/v1';
+const IDENTITY = 'https://gw.test/identity/v1';
+
 interface Call {
+  /** Qué servicio recibió la petición, según su prefijo (como el gateway: /flights/v1 → core, /identity/v1 → identity). */
+  service: 'core' | 'identity';
   method: string;
   path: string;
   auth: string | null;
@@ -26,15 +31,21 @@ function fakeBackend() {
   let validRefresh = 'ref-1';
   const calls: Call[] = [];
   let meRoles = ['administrador'];
+  let coreRejectsAll = false;
   const json = (status: number, body: unknown, headers: Record<string, string> = {}) =>
     new Response(status === 204 ? null : JSON.stringify(body), { status, headers: { 'content-type': status >= 400 ? 'application/problem+json' : 'application/json', ...headers } });
 
   const fetchImpl = vi.fn(async (input: URL | RequestInfo, init?: RequestInit) => {
     const url = new URL(String(input));
-    const path = url.pathname.replace('/flights/v1', '') + url.search;
+    const service: Call['service'] = url.pathname.startsWith('/identity/v1') ? 'identity' : 'core';
+    const path = url.pathname.replace(/^\/(flights|identity)\/v1/, '') + url.search;
     const headers = new Headers(init?.headers);
     const body = init?.body ? JSON.parse(String(init.body)) : undefined;
-    calls.push({ method: init?.method ?? 'GET', path, auth: headers.get('Authorization'), body });
+    calls.push({ service, method: init?.method ?? 'GET', path, auth: headers.get('Authorization'), body });
+
+    // El core corre con AUTH_MODE=external: ni /auth/* ni /admin/users existen ahí (404), solo en identity.
+    if (service === 'core' && (path.startsWith('/auth/') || path.startsWith('/admin/users'))) return json(404, { status: 404, code: 'VALIDATION_FAILED' });
+    if (service === 'identity' && !path.startsWith('/auth/') && !path.startsWith('/admin/users')) return json(404, { status: 404, code: 'VALIDATION_FAILED' });
 
     if (path === '/auth/refresh') {
       if (body.refresh_token !== validRefresh) return json(401, { status: 401, code: 'VALIDATION_FAILED', detail: 'Invalid refresh token' });
@@ -48,21 +59,29 @@ function fakeBackend() {
       return json(200, { access_token: validAccess, token_type: 'Bearer', expires_in: 900, refresh_token: validRefresh, scope: 'flights:admin' });
     }
     if (path === '/auth/logout') return json(204, null);
+    if (path.startsWith('/admin/users') && service === 'identity') {
+      if (headers.get('Authorization') !== `Bearer ${validAccess}`) return json(401, { status: 401, code: 'VALIDATION_FAILED', detail: 'expired' });
+      if (init?.method === 'POST') return json(201, { id: 'a1', email: body.email, createdAt: '2026-01-01T00:00:00Z', active: true });
+      if (init?.method === 'DELETE') return json(204, null);
+      return json(200, { items: [{ id: 'a1', email: 'a@x.co', createdAt: '2026-01-01T00:00:00Z', active: true }] });
+    }
     if (path === '/auth/me') return json(200, { id: 'u1', email: 'a@x.co', roles: meRoles, scopes: meRoles.includes('administrador') ? ['flights:admin'] : ['flights:read'], createdAt: '2026-01-01T00:00:00Z' });
-    if (headers.get('Authorization') !== `Bearer ${validAccess}`) return json(401, { status: 401, code: 'VALIDATION_FAILED', detail: 'expired' });
+    if (coreRejectsAll || headers.get('Authorization') !== `Bearer ${validAccess}`) return json(401, { status: 401, code: 'VALIDATION_FAILED', detail: 'expired' });
     if (path.startsWith('/admin/airports?') && path.includes('limit=429')) return json(429, { status: 429, code: 'RATE_LIMIT_EXCEEDED' }, { 'Retry-After': '12' });
     if (path.startsWith('/admin/airports') && init?.method === 'POST') return json(422, { status: 422, code: 'VALIDATION_FAILED', detail: 'City X does not exist or is inactive', invalidParams: [{ name: 'cityId', reason: 'bad' }] });
     if (path.startsWith('/admin/airports/UIO') && init?.method === 'DELETE') return json(204, null);
+    if (path.startsWith('/admin/audit-log')) return json(200, { items: [] });
+    if (path.startsWith('/admin/bookings')) return json(200, { items: [] });
     if (path.startsWith('/admin/airports')) return json(200, { items: [{ code: 'UIO', name: 'Mariscal Sucre', cityId: 'c1', cityName: 'Quito', country: 'EC', active: true }] });
     return json(404, { status: 404, code: 'VALIDATION_FAILED' });
   });
-  return { fetchImpl, calls, expireAccess: () => (validAccess = 'rotated-elsewhere'), asCustomer: () => (meRoles = ['cliente']) };
+  return { fetchImpl, calls, expireAccess: () => (validAccess = 'rotated-elsewhere'), asCustomer: () => (meRoles = ['cliente']), rejectCore: () => (coreRejectsAll = true) };
 }
 
 function setup() {
   const backend = fakeBackend();
-  const client = createHttpClient({ baseUrl: 'https://api.test/flights/v1', fetchImpl: backend.fetchImpl as never, getAccessToken: () => session.getAccessToken(), sleep: async () => undefined });
-  const api: AdminApi = createRealAdminApi(client);
+  const make = (baseUrl: string) => createHttpClient({ baseUrl, fetchImpl: backend.fetchImpl as never, getAccessToken: () => session.getAccessToken(), sleep: async () => undefined });
+  const api: AdminApi = createRealAdminApi({ core: make(CORE), identity: make(IDENTITY) });
   const session = new SessionManager({
     api: api.auth,
     store: createTokenStore(memoryStorage(), memoryStorage()),
@@ -156,5 +175,67 @@ describe('capa real: cliente HTTP + sesión', () => {
     expect(url).toContain('includeInactive=true');
     expect(url).toContain('country=EC');
     expect(url).not.toContain('cityId');
+  });
+
+  describe('qué ruta va a qué servicio (core e identity detrás del gateway)', () => {
+    const session0 = (s: ReturnType<typeof setup>['session']) =>
+      (s as unknown as { setAccess: (t: unknown) => void }).setAccess({ accessToken: 'acc-1', refreshToken: 'ref-1', expiresIn: 900, scope: '' });
+
+    it('login, me y logout van a identity; nada de /auth/* llega al core', async () => {
+      const { backend, session } = setup();
+      await session.login({ email: 'a@x.co', password: 'una frase larga y fácil' });
+      await session.logout();
+      const auth = backend.calls.filter((c) => c.path.startsWith('/auth/'));
+      expect(auth.map((c) => c.path)).toEqual(['/auth/login', '/auth/me', '/auth/logout']);
+      expect(auth.every((c) => c.service === 'identity')).toBe(true);
+    });
+
+    it('el refresh va a identity y el Bearer que va al core es el token que emitió identity', async () => {
+      const { backend, api, session } = setup();
+      session0(session);
+      (session as unknown as { deps: { store: { write: (t: string) => void } } }).deps.store.write('ref-1');
+      backend.expireAccess();
+      await api.airports.list();
+      const refresh = backend.calls.find((c) => c.path === '/auth/refresh')!;
+      expect(refresh.service).toBe('identity');
+      const retried = backend.calls.filter((c) => c.path.startsWith('/admin/airports')).at(-1)!;
+      expect(retried.service).toBe('core');
+      expect(retried.auth).toBe('Bearer acc-2');
+    });
+
+    it('los administradores (listar, crear, dar de baja) van a identity; catálogo, auditoría y reservas, al core', async () => {
+      const { backend, api, session } = setup();
+      session0(session);
+      await api.admins.list({ limit: 10 });
+      await api.admins.create({ email: 'nuevo@x.co', password: 'una frase larga y fácil' });
+      await api.admins.deactivate('a1');
+      await api.airports.list();
+      await api.auditLog.list({ filters: { table: 'pais' } });
+      await api.bookings.list();
+      const byService = (service: Call['service']) => backend.calls.filter((c) => c.service === service).map((c) => `${c.method} ${c.path.split('?')[0]}`);
+      expect(byService('identity')).toEqual(['GET /admin/users', 'POST /admin/users', 'DELETE /admin/users/a1']);
+      expect(byService('core')).toEqual(['GET /admin/airports', 'GET /admin/audit-log', 'GET /admin/bookings']);
+    });
+
+    it('un 401 del core con un token de identity renueva UNA vez (por identity) y reintenta una vez, sin bucles', async () => {
+      const { backend, api, session } = setup();
+      session0(session);
+      (session as unknown as { deps: { store: { write: (t: string) => void } } }).deps.store.write('ref-1');
+      backend.expireAccess();
+      await api.bookings.list();
+      expect(backend.calls.filter((c) => c.path === '/auth/refresh')).toHaveLength(1);
+      expect(backend.calls.filter((c) => c.service === 'core' && c.path.startsWith('/admin/bookings'))).toHaveLength(2);
+    });
+
+    it('si tras renovar el core sigue dando 401, la sesión se cierra y no hay un segundo refresh', async () => {
+      const { backend, api, session } = setup();
+      session0(session);
+      (session as unknown as { deps: { store: { write: (t: string) => void } } }).deps.store.write('ref-1');
+      backend.rejectCore();
+      await expect(api.bookings.list()).rejects.toMatchObject({ status: 401 });
+      expect(backend.calls.filter((c) => c.path === '/auth/refresh')).toHaveLength(1);
+      expect(backend.calls.filter((c) => c.service === 'core')).toHaveLength(2);
+      expect(session.getState()).toMatchObject({ status: 'anonymous', ended: 'security' });
+    });
   });
 });

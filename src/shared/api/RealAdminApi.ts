@@ -31,15 +31,41 @@ function resource<T, C, U, D = T>(client: HttpClient, base: string): Resource<T,
 
 const toTokens = (t: TokenResponseDto) => ({ accessToken: t.access_token, refreshToken: t.refresh_token, expiresIn: t.expires_in, scope: t.scope });
 
-function authApi(client: HttpClient): AuthApi {
+/** Los dos servicios que habla el backoffice (los dos detrás del gateway): cada uno con su base de URL. */
+export interface ServiceClients {
+  /** Core: catálogo, auditoría, reservas… (`API_URL`). */
+  core: HttpClient;
+  /** Identity: ingreso, sesión y administradores (`IDENTITY_URL`). */
+  identity: HttpClient;
+}
+
+/**
+ * Una llamada a identity. Si identity no está configurada, está caída o no tiene la ruta (404 en una ruta
+ * que nunca es "no existe el registro", 502/503/504 del gateway, red o tiempo agotado), el error se marca
+ * `service: 'identity'` para que la interfaz diga "identity no disponible" y no "el core no tiene el endpoint".
+ * Un 404 de DELETE /admin/users/{id} sí puede ser "no existe ese administrador": `notFoundIsMissing: false`.
+ */
+async function viaIdentity<T>(call: () => Promise<T>, { notFoundIsMissing = true } = {}): Promise<T> {
+  try {
+    return await call();
+  } catch (error) {
+    if (error instanceof ApiError && !error.service) {
+      const unavailable = error.status === 0 || error.status === 502 || error.status === 503 || error.status === 504 || (notFoundIsMissing && error.status === 404);
+      if (unavailable) throw new ApiError({ status: error.status, code: error.code, title: error.title, detail: error.detail, retryAfter: error.retryAfter, service: 'identity' });
+    }
+    throw error;
+  }
+}
+
+function authApi(identity: HttpClient): AuthApi {
   return {
-    // Ingreso y renovación son públicos: nunca llevan Bearer.
-    login: async (c) => toTokens(await client.request<TokenResponseDto>('POST', '/auth/login', { body: { email: c.email, password: c.password } })),
-    refresh: async (refreshToken) => toTokens(await client.request<TokenResponseDto>('POST', '/auth/refresh', { body: { refresh_token: refreshToken } })),
+    // Ingreso y renovación son públicos: nunca llevan Bearer. Van a identity ({IDENTITY_URL}/auth/*).
+    login: async (c) => toTokens(await viaIdentity(() => identity.request<TokenResponseDto>('POST', '/auth/login', { body: { email: c.email, password: c.password } }))),
+    refresh: async (refreshToken) => toTokens(await viaIdentity(() => identity.request<TokenResponseDto>('POST', '/auth/refresh', { body: { refresh_token: refreshToken } }))),
     logout: async (refreshToken) => {
-      await client.request<void>('POST', '/auth/logout', { auth: true, body: { refresh_token: refreshToken } });
+      await viaIdentity(() => identity.request<void>('POST', '/auth/logout', { auth: true, body: { refresh_token: refreshToken } }));
     },
-    me: () => client.request('GET', '/auth/me', { auth: true, retry: true }),
+    me: () => viaIdentity(() => identity.request('GET', '/auth/me', { auth: true, retry: true })),
   };
 }
 
@@ -56,14 +82,17 @@ async function ifEndpointExists<T>(path: string, call: () => Promise<T>): Promis
   }
 }
 
-/** Administradores: el backend no tiene detalle, edición ni reactivación; la interfaz no los ofrece. */
-function adminsResource(client: HttpClient): Resource<AdminUser, CreateAdminUser, never> {
+/**
+ * Administradores: viven en identity ({IDENTITY_URL}/admin/users), no en el core. La API solo lista, crea y da de baja:
+ * sin detalle, edición ni reactivación (la interfaz no los ofrece).
+ */
+function adminsResource(identity: HttpClient): Resource<AdminUser, CreateAdminUser, never> {
   const missing = () => Promise.reject(new ApiError({ status: 0, code: 'NOT_CONNECTED' }));
-  const base = resource<AdminUser, CreateAdminUser, never>(client, RESOURCE_PATHS.admins);
+  const base = resource<AdminUser, CreateAdminUser, never>(identity, '/admin/users');
   return {
-    ...base,
-    list: (q) => ifEndpointExists(RESOURCE_PATHS.admins, () => base.list(q)),
-    create: (body) => ifEndpointExists(RESOURCE_PATHS.admins, () => base.create(body)),
+    list: (q) => viaIdentity(() => base.list(q)),
+    create: (body) => viaIdentity(() => base.create(body)),
+    deactivate: (id) => viaIdentity(() => base.deactivate(id), { notFoundIsMissing: false }),
     get: missing,
     update: missing,
     reactivate: missing,
@@ -86,10 +115,13 @@ function bookingsApi(client: HttpClient): BookingsApi {
   };
 }
 
-/** Implementación HTTP de `AdminApi` contra la API real (única que usa el cliente `fetch`). */
-export function createRealAdminApi(client: HttpClient): AdminApi {
+/**
+ * Implementación HTTP de `AdminApi` contra la API real (única que usa el cliente `fetch`). Qué ruta va a qué servicio:
+ * `auth/*` y `admin/users` → identity; todo lo demás (catálogo, auditoría, reservas…) → core.
+ */
+export function createRealAdminApi({ core: client, identity }: ServiceClients): AdminApi {
   return {
-    auth: authApi(client),
+    auth: authApi(identity),
     countries: resource(client, RESOURCE_PATHS.countries),
     cities: resource(client, RESOURCE_PATHS.cities),
     airports: resource(client, RESOURCE_PATHS.airports),
@@ -100,7 +132,7 @@ export function createRealAdminApi(client: HttpClient): AdminApi {
     flightNumbers: resource(client, RESOURCE_PATHS.flightNumbers),
     departures: resource(client, RESOURCE_PATHS.departures),
     fares: resource(client, RESOURCE_PATHS.fares),
-    admins: adminsResource(client),
+    admins: adminsResource(identity),
     auditLog: {
       list: (q) => ifEndpointExists(AUDIT_LOG_PATH, () => authorized(() => client.request<Page<AuditEvent>>('GET', AUDIT_LOG_PATH, { auth: true, retry: true, query: listQuery(q) }))),
     },

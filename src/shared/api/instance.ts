@@ -4,11 +4,13 @@ import { createHttpClient } from './http/client';
 import { createRealAdminApi } from './RealAdminApi';
 import { currentAccessToken } from './authBridge';
 
-const httpClient = createHttpClient({ baseUrl: apiConfig.apiUrl, getAccessToken: currentAccessToken });
-let api: AdminApi = createRealAdminApi(httpClient);
+// Dos bases, una por servicio, y el MISMO token de acceso para las dos (lo emite identity, el core lo verifica).
+const coreClient = createHttpClient({ baseUrl: apiConfig.apiUrl, getAccessToken: currentAccessToken });
+const identityClient = createHttpClient({ baseUrl: apiConfig.identityUrl, getAccessToken: currentAccessToken });
+let api: AdminApi = createRealAdminApi({ core: coreClient, identity: identityClient });
 let replaced = false;
 
-/** La API que usa la interfaz: siempre la real (HTTP contra /flights/v1). */
+/** La API que usa la interfaz: siempre la real (core e identity detrás del gateway). */
 export const adminApi: AdminApi = new Proxy({} as AdminApi, {
   get: (_target, key) => api[key as keyof AdminApi],
 });
@@ -27,8 +29,9 @@ export function setAdminApi(replacement: AdminApi): () => void {
   };
 }
 
-/** Despierta el servidor gratuito de Render en segundo plano (con una API de prueba instalada no hay nada que despertar). */
+/** Despierta en segundo plano los servicios gratuitos de Render, core e identity (con una API de prueba instalada no hay nada que despertar). */
 export function warmUpServer(): void {
-  if (replaced) return;
-  void httpClient.request('GET', '/health', { silent: true }).catch(() => undefined);
+  if (replaced || apiConfig.issues.length > 0) return;
+  void coreClient.request('GET', '/health', { silent: true }).catch(() => undefined);
+  void identityClient.request('GET', '/health', { silent: true }).catch(() => undefined);
 }

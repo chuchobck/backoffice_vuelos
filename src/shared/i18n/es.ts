@@ -97,6 +97,19 @@ export const es = {
     userMenu: 'Cuenta',
   },
 
+  config: {
+    title: 'Configuración inválida',
+    lead: 'El backoffice no puede arrancar porque public/config.js tiene un valor que no sirve. No se hizo ninguna llamada a la red.',
+    issues: {
+      API_URL_INVALID: 'API_URL no es una URL válida (http o https, sin usuario, consulta ni fragmento) ni una ruta que empiece con /.',
+      IDENTITY_URL_INVALID: 'IDENTITY_URL no es una URL válida (http o https, sin usuario, consulta ni fragmento) ni una ruta que empiece con /.',
+      IDENTITY_URL_UNDERIVABLE: 'Falta IDENTITY_URL y no se puede derivar de API_URL porque no termina en /flights/v1.',
+    },
+    valueLabel: 'Valor recibido',
+    howTitle: 'Cómo arreglarlo',
+    how: 'Edita config.js en el sitio publicado (no hace falta recompilar). Con el gateway delante, basta con API_URL; IDENTITY_URL se deriva cambiando /flights/v1 por /identity/v1:',
+  },
+
   auth: {
     title: 'Iniciar sesión',
     lead: 'Ingresa con tu cuenta de administrador.',
@@ -106,6 +119,7 @@ export const es = {
     submit: 'Iniciar sesión',
     submitting: 'Ingresando…',
     apiLabel: 'API',
+    identityLabel: 'Identidad',
     apiMissing: '(sin configurar)',
     invalidCredentials: 'Correo o contraseña incorrectos.',
     notAdmin: 'Tu cuenta no tiene permiso de administrador para usar este panel.',
@@ -149,6 +163,7 @@ export const es = {
     server5xx: 'La API tuvo un problema. Inténtalo más tarde.',
     unavailable503: 'La API no está disponible por ahora. Inténtalo en un momento.',
     unavailable503Wait: 'La API no está disponible por ahora. Reintenta en {seconds} s.',
+    identityUnavailable: 'El servicio de identidad (cuentas y administradores) no está configurado o no responde. Revisa IDENTITY_URL en config.js y que identity esté disponible.',
     endpointMissing: 'La API desplegada no tiene todavía el endpoint {path}. Hay que agregarlo en el backend.',
     retryIn: 'Podrás reintentar en {seconds} s.',
     summaryTitle: 'Hay {count} campos por corregir',
