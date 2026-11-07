@@ -1,4 +1,6 @@
-// Configuración del backoffice. Cambia API_URL aquí sin tocar index.html.
+// Configuración del backoffice. Cambia las URLs aquí sin tocar index.html.
+// Detrás del gateway: una sola entrada pública; la cuenta va a identity y lo demás al core.
 window.APP_CONFIG = {
-  API_URL: "https://quinde-vuelos-api.onrender.com/flights/v1"
+  API_URL: "https://quinde-vuelos-oe.spaincentral.cloudapp.azure.com/flights/v1",
+  IDENTITY_URL: "https://quinde-vuelos-oe.spaincentral.cloudapp.azure.com/identity/v1"
 };

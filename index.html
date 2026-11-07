@@ -278,6 +278,10 @@ function friendly(e, ctx = {}) {
 /* ---------- Sesión y cliente HTTP ---------- */
 const CFG = window.APP_CONFIG || {};
 const API_URL = String(CFG.API_URL || "").replace(/\/+$/, "");
+// Cuenta (login, refresh, logout, me y administradores): en la arquitectura nueva vive en identity (/identity/v1).
+// Sin IDENTITY_URL se usa API_URL, como antes (backend viejo con login propio).
+const IDENTITY_URL = String(CFG.IDENTITY_URL || "").replace(/\/+$/, "") || API_URL;
+const baseDe = (path) => (path.startsWith("/auth/") || path === "/admin/users" || path.startsWith("/admin/users/")) ? IDENTITY_URL : API_URL;
 const RT_KEY = "bo_vuelos_refresh";
 const session = { access: null, refresh: null, demo: false, user: null };
 let refreshing = null;
@@ -292,7 +296,7 @@ function setTokens(r) {
 }
 
 async function rawFetch(method, path, { body, query, token } = {}) {
-  const url = new URL(API_URL + path);
+  const url = new URL(baseDe(path) + path);
   for (const [k, v] of Object.entries(query || {})) if (v !== undefined && v !== null && v !== "") url.searchParams.set(k, v);
   const headers = { Accept: "application/json, application/problem+json" };
   if (body !== undefined) headers["Content-Type"] = "application/json";
