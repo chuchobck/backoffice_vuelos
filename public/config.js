@@ -12,6 +12,6 @@
 //   Explícita:            IDENTITY_URL: "https://<gateway>/identity/v1"
 //   Desarrollo (npm run dev lo sirve solo; el proxy de Vite reenvía al gateway local): "/flights/v1" y "/identity/v1"
 window.BACKOFFICE_CONFIG = {
-  API_URL: "https://quinde-vuelos-api.onrender.com/flights/v1"
-  // IDENTITY_URL: "https://quinde-vuelos-api.onrender.com/identity/v1"
+  API_URL: "https://quinde-vuelos-oe.spaincentral.cloudapp.azure.com/flights/v1",
+  IDENTITY_URL: "https://quinde-vuelos-oe.spaincentral.cloudapp.azure.com/identity/v1"
 };
