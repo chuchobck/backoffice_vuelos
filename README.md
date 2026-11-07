@@ -40,6 +40,13 @@ Archivos: `index.html` (la aplicación), `config.js` (URL de la API) y este `REA
 Para probar en local basta cualquier servidor estático (por ejemplo `python3 -m http.server`);
 `http://localhost:<puerto>` también debe estar en `CORS_ORIGINS` para usar la API real.
 
+## Cuenta en identity (arquitectura con gateway)
+
+`config.js` acepta `IDENTITY_URL`. Con valor, `/auth/*` (login, refresh, logout, me) y `/admin/users`
+van a identity (`<gateway>/identity/v1`) y el resto de `/admin/*` al core (`<gateway>/flights/v1`).
+Sin `IDENTITY_URL` todo va a `API_URL`, como con el backend viejo (login propio del core).
+El gateway debe tener este sitio en `CORS_ORIGINS`.
+
 ## Cómo cambiar la URL de la API
 
 Edita `config.js` (no hace falta tocar el HTML):
