@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  addDaysToDate, datetimeLocalToUtc, ECUADOR_ZONE, formatLocal, GALAPAGOS_ZONE, localToUtcIso, todayIn, utcToDatetimeLocal, utcToLocal, weekdayOf, zoneLabel, zoneOffsetMinutes,
+  addDaysToDate, datetimeLocalToUtc, ECUADOR_ZONE, formatLocal, formatLocalTime, GALAPAGOS_ZONE, localToUtcIso, todayIn, utcToDatetimeLocal, utcToLocal, weekdayOf, zoneLabel, zoneOffsetMinutes,
 } from './dates';
 
 describe('horas: UTC en la API, hora local en pantalla', () => {
@@ -35,6 +35,14 @@ describe('horas: UTC en la API, hora local en pantalla', () => {
     expect(formatLocal('2026-11-02T13:00:00Z', ECUADOR_ZONE)).toMatch(/2 nov 2026/);
     expect(formatLocal(null, ECUADOR_ZONE)).toBe('—');
     expect(formatLocal('basura', ECUADOR_ZONE)).toBe('—');
+  });
+
+  it('solo la hora, en la zona del aeropuerto (13:05Z → 08:05 en Ecuador, 07:05 en Galápagos)', () => {
+    expect(formatLocalTime('2026-11-02T13:05:00Z', ECUADOR_ZONE)).toBe('08:05');
+    expect(formatLocalTime('2026-11-02T13:05:00Z', GALAPAGOS_ZONE)).toBe('07:05');
+    expect(formatLocalTime('2026-11-02T05:00:00Z', ECUADOR_ZONE)).toBe('00:00');
+    expect(formatLocalTime(null, ECUADOR_ZONE)).toBe('—');
+    expect(formatLocalTime('basura', ECUADOR_ZONE)).toBe('—');
   });
 
   it('etiquetas de zona', () => {

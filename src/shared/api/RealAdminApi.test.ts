@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { ApiError, errorMessage } from './errors';
+import { ApiError, boardingErrorMessage, errorMessage } from './errors';
 import { createHttpClient } from './http/client';
 import { createRealAdminApi } from './RealAdminApi';
 
@@ -12,6 +12,41 @@ function api(status = 200, body: unknown = { items: [] }) {
   const call = () => fetchImpl.mock.calls[0] as unknown as [URL, RequestInit & { headers: Record<string, string> }];
   return { real, call, fetchImpl };
 }
+
+describe('RealAdminApi: puerta de embarque', () => {
+  const ID = '3f2b9c1e-0000-4000-8000-000000000001';
+  const PASS = 'BP1|K7M2QX|0451331201527|LA1400|20261020|UIOGYE|10A|001|9f2c41b7a0d3';
+
+  it('escanear: POST /admin/departures/{id}/boarding/scan con { barcode } y el token', async () => {
+    const { real, call } = api(200, { result: 'BOARDED', departureId: ID, flightNumber: 'LA1400', seat: '10A', boardingGroup: '3', boardingPosition: '010', boardedAt: '2026-10-20T13:05:00Z', passenger: { passengerId: 'ADU1', firstName: 'Ana', lastName: 'Prueba' }, infants: [] });
+    const out = await real.boarding.scan(ID, PASS);
+    const [url, init] = call();
+    expect(init.method).toBe('POST');
+    expect(url.pathname).toBe(`/flights/v1/admin/departures/${ID}/boarding/scan`);
+    expect(JSON.parse(String(init.body))).toEqual({ barcode: PASS });
+    expect(out.result).toBe('BOARDED');
+  });
+
+  it('el escaneo nunca se reintenta solo (ni ante un 503): un reintento podría dar otro resultado al mismo pase', async () => {
+    const { real, fetchImpl } = api(503, { title: 'Service Unavailable', status: 503 });
+    await expect(real.boarding.scan(ID, PASS)).rejects.toMatchObject({ status: 503 });
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it('el manifiesto: GET /admin/departures/{id}/boarding/manifest', async () => {
+    const { real, call } = api(200, { departureId: ID, seats: [] });
+    await real.boarding.manifest(ID);
+    expect(call()[1].method).toBe('GET');
+    expect(call()[0].pathname).toBe(`/flights/v1/admin/departures/${ID}/boarding/manifest`);
+  });
+
+  it('un 404 del escaneo conserva su significado (no es "falta el endpoint")', async () => {
+    const { real } = api(404, { title: 'Not Found', status: 404, code: 'BOARDING_PASS_NOT_FOUND' });
+    const error = await real.boarding.scan(ID, PASS).catch((e: unknown) => e);
+    expect(error).toMatchObject({ status: 404, code: 'BOARDING_PASS_NOT_FOUND' });
+    expect(boardingErrorMessage(error)).toMatch(/No se encontró el boleto/);
+  });
+});
 
 describe('RealAdminApi: auditoría, administradores y reservas', () => {
   it('auditoría: GET /admin/audit-log con filtros y cursor', async () => {
