@@ -27,6 +27,7 @@ export function buildDeparturesConfig(zoneOf: (airport: string) => string, initi
       { id: 'route', header: t.cols.route, cell: (d) => `${d.origin} → ${d.destination}`, sortValue: (d) => `${d.origin}${d.destination}` },
       { id: 'departure', header: t.cols.departure, cell: (d) => <ZonedTime iso={d.scheduledDeparture} airport={d.origin} />, sortValue: (d) => d.scheduledDeparture },
       { id: 'arrival', header: t.cols.arrival, cell: (d) => <ZonedTime iso={d.scheduledArrival} airport={d.destination} />, sortValue: (d) => d.scheduledArrival },
+      { id: 'gate', header: t.cols.gate, cell: (d) => d.departureGate ?? es.common.dash, sortValue: (d) => d.departureGate ?? '' },
       { id: 'cabins', header: t.cols.cabins, cell: (d) => cabinsText(d) },
       { id: 'status', header: t.cols.status, cell: (d) => <DepartureStatusBadge status={d.status} />, sortValue: (d) => d.status },
     ],
@@ -54,6 +55,7 @@ export function buildDeparturesConfig(zoneOf: (airport: string) => string, initi
         { label: t.detail.departureUtc, value: <span className="font-mono">{d.scheduledDeparture}</span> },
         { label: t.detail.arrivalUtc, value: <span className="font-mono">{d.scheduledArrival}</span> },
         { label: t.detail.terminals, value: `${d.departureTerminal ?? es.common.dash} → ${d.arrivalTerminal ?? es.common.dash}` },
+        { label: t.detail.gate, value: d.departureGate ?? es.common.dash },
         { label: t.detail.aircraft, value: d.aircraftModel },
         { label: t.detail.seatMap, value: <span className="font-mono">{d.seatMapId}</span> },
         { label: t.detail.cabins, value: cabinsText(d) },
@@ -70,6 +72,7 @@ export function buildDeparturesConfig(zoneOf: (airport: string) => string, initi
           { kind: 'text', inputType: 'datetime-local', name: 'scheduledArrival', label: t.fields.scheduledArrival, hint: d ? fmt(t.fieldHints.scheduledArrival, { airport: d.destination, zone: arr }) : undefined },
           { kind: 'text', name: 'departureTerminal', label: t.fields.departureTerminal, maxLength: 10, optional: true },
           { kind: 'text', name: 'arrivalTerminal', label: t.fields.arrivalTerminal, maxLength: 10, optional: true },
+          { kind: 'text', name: 'departureGate', label: t.fields.departureGate, hint: t.fieldHints.departureGate, maxLength: 10, optional: true },
           { kind: 'select', name: 'status', label: t.fields.status, hint: t.fieldHints.status, options: EDITABLE_STATUSES.map((s) => ({ value: s, label: statusLabel(s) })) },
         ];
       },
@@ -81,6 +84,7 @@ export function buildDeparturesConfig(zoneOf: (airport: string) => string, initi
         scheduledArrival: d ? utcToDatetimeLocal(d.scheduledArrival, zoneOf(d.destination)) : '',
         departureTerminal: d?.departureTerminal ?? '',
         arrivalTerminal: d?.arrivalTerminal ?? '',
+        departureGate: d?.departureGate ?? '',
         status: d?.status ?? 'SCHEDULED',
       }),
       toCreate: () => {
@@ -94,6 +98,7 @@ export function buildDeparturesConfig(zoneOf: (airport: string) => string, initi
         if (arr !== d.scheduledArrival) body.scheduledArrival = arr;
         if (v.departureTerminal !== (d.departureTerminal ?? '')) body.departureTerminal = v.departureTerminal === '' ? null : v.departureTerminal;
         if (v.arrivalTerminal !== (d.arrivalTerminal ?? '')) body.arrivalTerminal = v.arrivalTerminal === '' ? null : v.arrivalTerminal;
+        if (v.departureGate !== (d.departureGate ?? '')) body.departureGate = v.departureGate === '' ? null : v.departureGate;
         if (v.status !== d.status) body.status = v.status;
         return Object.keys(body).length ? (body as never) : null;
       },

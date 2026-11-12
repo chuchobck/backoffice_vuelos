@@ -312,7 +312,7 @@ export function createFakeAdminApi(options: FakeOptions = {}): AdminApi {
         departureDate: new Date(dep.getTime() - zoneOffset * 3600_000).toISOString().slice(0, 10),
         scheduledDeparture: b.scheduledDeparture, scheduledArrival: b.scheduledArrival,
         estimatedDeparture: null, estimatedArrival: null, actualDeparture: null, actualArrival: null,
-        departureTerminal: b.departureTerminal ?? null, arrivalTerminal: b.arrivalTerminal ?? null, status: 'SCHEDULED', seatMapId: sm.id, aircraftModel: sm.aircraftModel,
+        departureTerminal: b.departureTerminal ?? null, arrivalTerminal: b.arrivalTerminal ?? null, departureGate: b.departureGate ?? null, status: 'SCHEDULED', seatMapId: sm.id, aircraftModel: sm.aircraftModel,
         cabins: cabins.map((c) => ({ cabinClass: c.cabinClass, totalSeats: c.totalSeats, availableSeats: c.totalSeats })), active: true,
       };
     },
@@ -320,6 +320,9 @@ export function createFakeAdminApi(options: FakeOptions = {}): AdminApi {
       const dep = new Date(b.scheduledDeparture ?? r.scheduledDeparture);
       const arr = new Date(b.scheduledArrival ?? r.scheduledArrival);
       if (!(arr > dep)) throw badBody('scheduledArrival', 'scheduledArrival must be after scheduledDeparture');
+      if (typeof b.departureGate === 'string' && (b.departureGate.length > 10 || b.departureGate !== b.departureGate.trim() || b.departureGate === '')) {
+        throw badBody('departureGate', 'departureGate must be at most 10 characters, without leading or trailing spaces');
+      }
       if ((b.status as string | undefined) === 'CANCELLED') throw badBody('status', 'status must be one of: ... (to cancel, use DELETE)');
       assign(r, b as Partial<Departure>);
       if (b.scheduledDeparture) {

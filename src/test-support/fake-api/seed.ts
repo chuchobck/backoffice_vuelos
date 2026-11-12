@@ -137,7 +137,7 @@ export function buildSeed(now: Date): FakeState {
       const arr = new Date(new Date(dep).getTime() + dur! * 60_000).toISOString().replace('.000Z', 'Z');
       const dp: Departure = {
         id: nextUuid(), flightNumber: al! + n!, origin: o!, destination: d!, departureDate: day, scheduledDeparture: dep, scheduledArrival: arr,
-        estimatedDeparture: null, estimatedArrival: null, actualDeparture: null, actualArrival: null, departureTerminal: null, arrivalTerminal: null,
+        estimatedDeparture: null, estimatedArrival: null, actualDeparture: null, actualArrival: null, departureTerminal: null, arrivalTerminal: null, departureGate: null,
         status: 'SCHEDULED', seatMapId: sm.id, aircraftModel: model!,
         cabins: sm.cabins.map((c) => ({ cabinClass: c.cabinClass, totalSeats: c.seats, availableSeats: c.seats })), active: true,
       };
