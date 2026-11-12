@@ -12,12 +12,16 @@ export const RETURN_TO_PARAM = 'volver';
 /** Parámetro de la lista de salidas que filtra por número de vuelo (enlace "Ver en la lista"). */
 export const FLIGHT_PARAM = 'vuelo';
 
+/** Parámetro de la lista de reservas que abre una reserva por su PNR (botón "Ver reserva" de la puerta de embarque). */
+export const PNR_PARAM = 'pnr';
+
 export const paths = {
   home: '/',
   login: '/ingresar',
   dashboard: '/panel',
   createFlight: '/vuelos/crear',
   departures: '/vuelos',
+  boarding: '/embarque',
   flightNumbers: '/numeros-de-vuelo',
   routes: '/rutas',
   fares: '/tarifas',
@@ -47,7 +51,9 @@ export const routes = {
   flightNumbers: () => paths.flightNumbers,
   routes: () => paths.routes,
   fares: () => paths.fares,
-  bookings: () => paths.bookings,
+  /** Lista de reservas; con `pnr` llega filtrada y con el detalle de esa reserva abierto. */
+  bookings: (pnr?: string) => (pnr ? `${paths.bookings}?${PNR_PARAM}=${encodeURIComponent(pnr)}` : paths.bookings),
+  boarding: () => paths.boarding,
   airports: () => paths.airports,
   airlines: () => paths.airlines,
   aircraftModels: () => paths.aircraftModels,

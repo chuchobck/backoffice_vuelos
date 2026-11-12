@@ -8,6 +8,7 @@ import type {
   CreateDeparture, CreateFare, CreateFareFamily, CreateFlightNumber, CreateSeatMap, Departure, Fare, FareFamily, FlightNumber,
   SeatMap, SeatMapSummary, UpdateAircraftModel, UpdateAirline, UpdateAirport, UpdateCity, UpdateCountry, UpdateDeparture,
   UpdateFare, UpdateFareFamily, UpdateFlightNumber, UpdateSeatMap, UserDto, AdminUser, AuditEvent, BookingDetail, BookingSummary, CreateAdminUser,
+  BoardingManifest, BoardingScanResult,
 } from './contract';
 
 export interface Page<T> {
@@ -77,6 +78,16 @@ export interface BookingsApi {
   cancel(bookingId: string, idempotencyKey: string, reason?: string): Promise<BookingDetail>;
 }
 
+/**
+ * Puerta de embarque (core, `flights:admin`). `scan` es una escritura (no se reintenta sola: un reintento
+ * podría contar dos veces); `manifest` es una lectura sin nombres ni documentos.
+ */
+export interface BoardingApi {
+  /** `barcode` es el texto del lector, tal cual. 200 = el pasajero abordó. */
+  scan(departureId: string, barcode: string): Promise<BoardingScanResult>;
+  manifest(departureId: string): Promise<BoardingManifest>;
+}
+
 export interface AdminApi {
   auth: AuthApi;
   countries: Resource<Country, CreateCountry, UpdateCountry>;
@@ -97,6 +108,7 @@ export interface AdminApi {
   admins: Resource<AdminUser, CreateAdminUser, never>;
   auditLog: AuditLogApi;
   bookings: BookingsApi;
+  boarding: BoardingApi;
 }
 
 /** Ruta de cada recurso bajo /flights/v1/admin. */
@@ -117,3 +129,6 @@ export const RESOURCE_PATHS: Record<ResourceName, string> = {
 
 export const AUDIT_LOG_PATH = '/admin/audit-log';
 export const BOOKINGS_PATH = '/admin/bookings';
+/** `/admin/departures/{departureId}/boarding/scan` y `.../manifest`. */
+export const boardingPath = (departureId: string, action: 'scan' | 'manifest') =>
+  `${RESOURCE_PATHS.departures}/${encodeURIComponent(departureId)}/boarding/${action}`;

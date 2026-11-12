@@ -1,0 +1,1 @@
+export { BoardingScreen } from './BoardingScreen';

@@ -17,6 +17,7 @@ export function departureEditSchema(originZone: string, destinationZone: string)
       scheduledArrival: datetime,
       departureTerminal: optionalText(10),
       arrivalTerminal: optionalText(10),
+      departureGate: optionalText(10),
       status: z.string().min(1, v.required),
     })
     .superRefine((value, ctx) => {

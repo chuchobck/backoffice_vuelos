@@ -57,7 +57,11 @@ export function createFakeAdminExtras(deps: {
   admin: { email: string; password: string };
   /** Quién está conectado: la regla "no darse de baja a uno mismo" depende de él. */
   currentId: () => string;
-}): Pick<AdminApi, 'admins' | 'auditLog' | 'bookings'> & { findAdminAccount: (email: string, password: string) => FakeAccount | undefined } {
+}): Pick<AdminApi, 'admins' | 'auditLog' | 'bookings'> & {
+  findAdminAccount: (email: string, password: string) => FakeAccount | undefined;
+  /** Las reservas tal como están ahora (la puerta de embarque saca de aquí a sus pasajeros). */
+  bookingDetails: () => BookingDetail[];
+} {
   const { now, wait, state } = deps;
   const startedAt = now().getTime();
 
@@ -292,6 +296,7 @@ export function createFakeAdminExtras(deps: {
     admins: adminsResource,
     auditLog,
     bookings: bookingsApi,
+    bookingDetails: () => bookings.map((b) => b.detail),
     findAdminAccount: (email, password) => {
       const row = admins.find((a) => a.email === email && a.password === password);
       return row && row.active ? { email: row.email, password: row.password, scopes: ['flights:admin'], id: row.id } : undefined;

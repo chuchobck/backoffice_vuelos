@@ -21,6 +21,8 @@ Qué permite hacer:
 - **Reservas** de todos los clientes: filtros (PNR, estado, fechas, correo del cliente, número de vuelo), "Cargar más", detalle
   (itinerarios, pasajeros, boletos, historial) y **cancelación administrativa** con confirmación explícita y una `Idempotency-Key`
   por intento.
+- **Puerta de embarque** (menú Operación, `/embarque`): se elige la salida (por defecto las de hoy) y se escanean los pases de abordar uno
+  por uno. Detalle en [Puerta de embarque](#puerta-de-embarque-y-check-in-por-pasajero-f5).
 - **Auditoría** (solo lectura): filtros (tabla, operación, usuario, id del registro, fechas), "Cargar más" y fila expandible con el
   diff antes/después; los valores sensibles llegan censurados como `[REDACTED]` y se muestran tal cual.
 
@@ -57,7 +59,7 @@ src/
 ```
 
 Módulos de `features/`: `auth`, `dashboard`, `flights-wizard`, `departures`, `fares`, `flight-numbers`, `routes`, `airports`,
-`airlines`, `aircraft-models`, `fare-families`, `seat-maps`, `cities`, `countries`, `admins`, `audit`, `bookings`.
+`airlines`, `aircraft-models`, `fare-families`, `seat-maps`, `cities`, `countries`, `admins`, `audit`, `bookings`, `embarque`.
 
 Reglas (las revisa `npm run lint`, ver `eslint.config.js`):
 
@@ -157,6 +159,7 @@ origen que empiece con una sola `/`. Si alguno no sirve, la aplicación **no arr
 | `GET`, `POST /admin/users` · `DELETE /admin/users/{id}` | `IDENTITY_URL` | identity |
 | `GET /health` de identity (despertar el servicio gratuito) | `IDENTITY_URL` | identity |
 | Catálogo: `/admin/countries`, `cities`, `airports`, `airlines`, `aircraft-models`, `fare-families`, `seat-maps`, `flights`, `departures`, `fares` | `API_URL` | core |
+| `POST /admin/departures/{id}/boarding/scan`, `GET /admin/departures/{id}/boarding/manifest` | `API_URL` | core |
 | `GET /admin/audit-log` | `API_URL` | core |
 | `GET /admin/bookings`, `GET /admin/bookings/{id}`, `POST /admin/bookings/{id}/cancel` | `API_URL` | core |
 | `GET /health` del core | `API_URL` | core |
@@ -237,7 +240,8 @@ genera una por intento (al abrir el diálogo de confirmación) y se reusa si hay
 | Familias tarifarias | `/admin/fare-families` y `/admin/fare-families/{id}` (+ `/reactivate`) |
 | Mapas de asientos | `/admin/seat-maps` y `/admin/seat-maps/{id}` (+ `/reactivate`); el detalle trae filas y asientos; `POST` crea el mapa con sus filas |
 | Números de vuelo | `/admin/flights` y `/admin/flights/{flightNumber}` (+ `/reactivate`) |
-| Salidas | `/admin/departures` y `/admin/departures/{id}` (+ `/reactivate`); `DELETE` = cancelar (`CANCELLED`) |
+| Salidas | `/admin/departures` y `/admin/departures/{id}` (+ `/reactivate`); `DELETE` = cancelar (`CANCELLED`); `departureGate` (puerta, hasta 10 caracteres, `null` = sin puerta) |
+| Embarque (core) | `POST /admin/departures/{departureId}/boarding/scan` (`{ barcode }`, 120/min) · `GET /admin/departures/{departureId}/boarding/manifest` |
 | Tarifas | `/admin/fares` y `/admin/fares/{id}` (+ `/reactivate`) |
 | Administradores (identity) | `GET`, `POST /identity/v1/admin/users` · `DELETE /identity/v1/admin/users/{id}` (baja lógica; sin detalle, edición ni reactivación) |
 | Auditoría | `GET /admin/audit-log` (`table`, `operation`, `recordId`, `userId`, `from`, `to`, `limit` hasta 100, `cursor`) |
@@ -250,6 +254,42 @@ API **no** filtra por texto: "Buscar en todas las páginas" recorre las páginas
 
 Errores: se leen como `application/problem+json` y se traducen a mensajes en español para 400, 401, 403, 404, 409, 422 y
 429 (con `Retry-After`); nunca se muestra el `detail` técnico.
+
+## Puerta de embarque y check-in por pasajero (F5)
+
+**Pantalla `/embarque`** (módulo `features/embarque`, menú *Operación*, scope `flights:admin`):
+
+1. **Elegir la salida**: una fecha (hoy por defecto, hora de Ecuador) y la lista de salidas de ese día (la misma que usa *Vuelos*).
+2. **Conteos del manifiesto**: estado y puerta de la salida; vendidos, con check-in y abordados (y los de infantes en brazos) con
+   barras de avance que **siempre dicen el valor también en texto** ("40 de 120 (33 %)"). Se refresca cada 10 s y justo después de
+   cada abordaje.
+3. **Campo "Código del pase"**: foco automático. Un lector de código de barras "escribe" el texto y manda Enter; pegarlo a mano
+   funciona igual. Al Enter se hace `POST …/boarding/scan`, el campo se limpia y recupera el foco. Antes de enviar solo se
+   comprueba que empiece con `BP1|` (la firma la verifica el backend).
+4. **Resultado grande**, en `role="status"` (éxito) o `role="alert"` (error), siempre con icono y texto. Éxito: **ABORDÓ**, nombre y
+   apellido (y los infantes en brazos), asiento, grupo y posición. Error: un mensaje por cada `code` (formato inválido, firma
+   inválida —posible pase falsificado—, vuelo cancelado, vuelo ya despegó, pase de otro vuelo, pase no válido, sin check-in, pase no
+   encontrado, ya abordó, demasiados escaneos); nunca el `detail` técnico.
+5. **Tabla del manifiesto** (asiento, cabina, PNR, estado, grupo, hora de abordaje en la hora local del aeropuerto de origen) con
+   filtro por estado y **"Ver reserva"**, que abre `/reservas?pnr=…` (la lista filtrada por ese PNR con su detalle abierto).
+
+**Privacidad del nombre.** El backend entrega el nombre del pasajero solo en la respuesta del escaneo, para que el agente lo compare
+con el documento. Aquí se pinta únicamente en ese resultado y **se borra a los 8 segundos, al siguiente escaneo y al salir de la
+pantalla**. Vive solo en la mutación de TanStack Query (`gcTime: 0` y `reset()`): no pasa a ningún otro estado, caché, `localStorage`,
+`sessionStorage`, consola ni a la tabla del manifiesto (que no trae nombres). Hay una prueba que lo comprueba.
+
+**Puerta de salida.** La lista de *Vuelos* gana la columna **Puerta** ("—" sin puerta), el detalle la muestra y el formulario de edición
+la pide (opcional, hasta 10 caracteres, sin espacios sobrantes; vacío = sin puerta, se envía `null`). El asistente de *Crear vuelo* no la
+pide: la puerta se asigna al editar la salida.
+
+**Check-in por pasajero en el detalle de la reserva.** La tabla de pasajeros tiene la columna **Check-in**. El admin no tiene un
+endpoint de pases por reserva, así que se saca del manifiesto de cada salida (cada `segmentId` de la reserva es un `departureId`): se
+busca la fila con el mismo `pnr` y `passengerId`. Valores: **Abordó** (con la hora local), **Check-in hecho**, **Sin check-in** (vendido o
+con boleto), **Sin asiento** y **No disponible** (la consulta falló, o el manifiesto no trae la fila de un pasajero que sí tiene
+asiento: no se adivina). Con varios segmentos hay un valor por segmento ("LA1402: Check-in hecho"). Se carga al abrir el detalle,
+con su propio estado de carga y de error por salida: un fallo no rompe el detalle.
+
+Decisiones y pendientes de la fase en [`docs/F5-NOTAS.md`](docs/F5-NOTAS.md).
 
 ## Probar las pantallas de administración contra el gateway local
 
@@ -295,12 +335,12 @@ dar de baja), y un administrador dado de baja conserva su token de acceso hasta 
 
 ## Pruebas
 
-- **Vitest** (`npm test`, ~175 pruebas): validadores y dinero, fechas y zonas, avisos de tarifa, mapeo de errores (ProblemDetails,
+- **Vitest** (`npm test`, ~265 pruebas; incluyen la puerta de embarque —escaneo, cada error, borrado del nombre a los 8 s, refresco, filtro—, la columna Puerta y la columna Check-in): validadores y dinero, fechas y zonas, avisos de tarifa, mapeo de errores (ProblemDetails,
   Retry-After), cliente HTTP (reintento solo de lecturas, deduplicación, tiempo agotado), `SessionManager` (renovación única, entre
   pestañas, cierre), integración cliente + sesión (401 → una renovación → reintento), generación de filas de mapas, plan y ejecución
   del asistente (reintento de lo pendiente, 429), y componentes: asistente completo, tabla con baja y reactivación, avisos de tarifa,
   ruta protegida y panel, además de los administradores (alta con 409, baja, baja propia bloqueada), la auditoría (filtros, diff, `[REDACTED]`, "Cargar más") y las reservas (filtros, detalle, cancelación con `Idempotency-Key` estable entre reintentos).
-- **E2E** (`npm run e2e`, Playwright + Chromium contra una API de prueba en memoria, sin red externa): login, asistente completo, un CRUD, las tres pantallas de administración, 320/768/1280 px (sin
+- **E2E** (`npm run e2e`, Playwright + Chromium contra una API de prueba en memoria, sin red externa): login, asistente completo, un CRUD, las tres pantallas de administración, la puerta de embarque (elegir salida, escanear, error, nombre borrado, "Ver reserva"), 320/768/1280 px (sin
   scroll horizontal de página y objetivos de 44 px), recorrido con teclado (saltar al contenido, foco al h1, diálogos con foco atrapado y
   Esc) y **axe** (WCAG 2.2 AA) en claro y oscuro. Las capturas quedan en `e2e/out/` (ignorado por git). El script usa el Chromium que
   tenga Playwright; en entornos con `PLAYWRIGHT_BROWSERS_PATH` apunta ahí.
@@ -316,7 +356,7 @@ dar de baja), y un administrador dado de baja conserva su token de acceso hasta 
 - **Orden por columna**: la API no ordena; se ordena lo que ya está cargado (la página, o todo con "buscar en todas las páginas").
 - **Rutas**: no existe un recurso "ruta" en la API. `Rutas` es una vista de solo lectura calculada con los números de vuelo
   (cada par origen → destino con sus números, enlazados a sus salidas).
-- **Salidas**: se crean con el asistente; el formulario de la lista edita horario, terminales y estado, y "Cancelar salida" es la baja lógica.
+- **Salidas**: se crean con el asistente; el formulario de la lista edita horario, terminales, puerta y estado, y "Cancelar salida" es la baja lógica.
 - **Tarifas**: se crean y editan con precios por tipo de pasajero (adulto obligatorio) con avisos de cordura; el asistente las crea junto con las salidas.
 - **Reintento a medias**: el asistente guarda lo ya creado (número de vuelo, salidas, tarifas) y "Reintentar lo pendiente" crea solo
   lo que falta; ante un 429 espera el `Retry-After` (máx. 65 s) y reintenta hasta 3 veces.

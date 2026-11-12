@@ -5856,249 +5856,6 @@
         ]
       }
     },
-    "/flights/v1/webhooks": {
-      "get": {
-        "operationId": "WebhookController_listar",
-        "summary": "Listar suscripciones",
-        "description": "Las suscripciones activas del usuario. El secreto va enmascarado (**** y sus últimos 4 caracteres).",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "Suscripciones activas",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/WebhookDto"
-                  }
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Falta el token, no es válido o venció (WWW-Authenticate: Bearer)",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "El token no trae los scopes requeridos: flights:webhooks",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Más de 100 peticiones por IP en un minuto (límite global, RATE_LIMIT_MAX; con Retry-After)",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "Webhooks"
-        ],
-        "security": [
-          {
-            "OAuth2Security": [
-              "flights:webhooks"
-            ]
-          },
-          {
-            "bearer": []
-          }
-        ]
-      },
-      "post": {
-        "operationId": "WebhookController_crear",
-        "summary": "Registrar webhook",
-        "description": "A lo sumo 10 suscripciones activas por usuario. Cada entrega es un POST con el WebhookPayload y las cabeceras X-Webhook-Event, X-Webhook-Id (eventId), X-Webhook-Timestamp (segundos desde 1970) y X-Webhook-Signature: sha256=<HMAC-SHA256 de \"timestamp.cuerpo\" con el secreto>. Se reintenta con espera creciente; respuesta 2xx = recibido.",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SolicitudWebhookDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Webhook registrado (secreto enmascarado)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/WebhookDto"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Cuerpo inválido o URL que no es un destino permitido",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Falta el token, no es válido o venció (WWW-Authenticate: Bearer)",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "El token no trae los scopes requeridos: flights:webhooks",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Ya tiene 10 suscripciones activas o esa URL activa",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Más de 10 altas por IP en un minuto",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "Webhooks"
-        ],
-        "security": [
-          {
-            "OAuth2Security": [
-              "flights:webhooks"
-            ]
-          },
-          {
-            "bearer": []
-          }
-        ]
-      }
-    },
-    "/flights/v1/webhooks/{id}": {
-      "delete": {
-        "operationId": "WebhookController_eliminar",
-        "summary": "Eliminar suscripción",
-        "description": "Baja lógica: deja de recibir eventos. Una suscripción ajena o que no está activa es 404.",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Eliminado"
-          },
-          "400": {
-            "description": "id no es un uuid",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Falta el token, no es válido o venció (WWW-Authenticate: Bearer)",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "El token no trae los scopes requeridos: flights:webhooks",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "La suscripción no existe, no está activa o es de otro usuario",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Más de 100 peticiones por IP en un minuto (límite global, RATE_LIMIT_MAX; con Retry-After)",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "Webhooks"
-        ],
-        "security": [
-          {
-            "OAuth2Security": [
-              "flights:webhooks"
-            ]
-          },
-          {
-            "bearer": []
-          }
-        ]
-      }
-    },
     "/flights/v1/admin/fares": {
       "get": {
         "operationId": "TarifaController_listar",
@@ -8312,6 +8069,307 @@
         ]
       }
     },
+    "/flights/v1/admin/departures/{departureId}/boarding/scan": {
+      "post": {
+        "operationId": "EmbarqueController_escanear",
+        "summary": "Escanear un pase de abordar en la puerta",
+        "description": "Recibe el texto del código (`barcode` de un pase) y la salida que la puerta embarca. Valida formato, firma, que el pase sea de esa salida, que el boleto y la reserva estén vigentes, que el pasajero tenga check-in y que no haya abordado; cada rechazo tiene su `code`. Si pasa, marca al pasajero como abordado con la hora del servidor (los infantes en brazos abordan con su adulto) y devuelve su nombre para compararlo con el documento. De dos escaneos simultáneos del mismo pase, uno responde 200 y el otro 409 ALREADY_BOARDED. No mueve cupo.",
+        "parameters": [
+          {
+            "name": "departureId",
+            "required": true,
+            "in": "path",
+            "description": "La salida (segmentId)",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EscanearPaseDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "El pasajero abordó",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AbordajeDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "BOARDING_PASS_MALFORMED: el texto no tiene el formato de un pase",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta el token, no es válido o venció (WWW-Authenticate: Bearer)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El token no trae los scopes requeridos: flights:admin",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "La salida no existe; BOARDING_PASS_NOT_FOUND: el boleto del pase no existe",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "FLIGHT_CANCELLED, FLIGHT_ALREADY_DEPARTED, BOARDING_PASS_WRONG_FLIGHT (el pase es de otra salida), BOARDING_PASS_NOT_VALID (reserva o boleto sin vigencia, o no es el pase emitido), PASSENGER_NOT_CHECKED_IN o ALREADY_BOARDED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "BOARDING_PASS_SIGNATURE_INVALID: la firma no es válida (código alterado)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Más de 120 escaneos por IP en un minuto",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Admin · Embarque"
+        ],
+        "security": [
+          {
+            "OAuth2Security": [
+              "flights:admin"
+            ]
+          },
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/flights/v1/admin/departures/{departureId}/boarding/manifest": {
+      "get": {
+        "operationId": "EmbarqueController_manifiesto",
+        "summary": "Manifiesto de embarque de una salida",
+        "description": "Para la pantalla de la puerta: cuántos asientos se vendieron, cuántos tienen check-in y cuántos abordaron, y una fila por asiento con su estado (BOOKED, TICKETED, CHECKED_IN o BOARDED). Lleva el PNR y el passengerId, nunca el nombre, el documento ni el correo.",
+        "parameters": [
+          {
+            "name": "departureId",
+            "required": true,
+            "in": "path",
+            "description": "La salida (segmentId)",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManifiestoDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Parámetro o cuerpo inválido",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta el token, no es válido o venció (WWW-Authenticate: Bearer)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El token no trae los scopes requeridos: flights:admin",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "La salida no existe",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Admin · Embarque"
+        ],
+        "security": [
+          {
+            "OAuth2Security": [
+              "flights:admin"
+            ]
+          },
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/flights/v1/bookings/{bookingId}/boarding-passes": {
+      "get": {
+        "operationId": "PaseAbordarController_consultar",
+        "summary": "Consultar pases de abordar",
+        "description": "Un pase por pasajero con asiento y vuelo con check-in, emitido al hacerlo y estable: pedirlos dos veces da lo mismo. Sin check-in, lista vacía. Los infantes no tienen pase propio. El barcode es un texto firmado con el PNR, el boleto, el vuelo, la fecha, la ruta, el asiento y el orden del pasajero; sin datos personales.",
+        "parameters": [
+          {
+            "name": "bookingId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Pases de abordar disponibles",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListaPasesDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "bookingId no es un uuid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta el token, no es válido o venció (WWW-Authenticate: Bearer)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El token no trae los scopes requeridos: flights:read",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "La reserva no existe o es de otro usuario",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Más de 100 peticiones por IP en un minuto (límite global, RATE_LIMIT_MAX; con Retry-After)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Check-in y Boarding Pass"
+        ],
+        "security": [
+          {
+            "OAuth2Security": [
+              "flights:read"
+            ]
+          },
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/flights/v1/search": {
       "post": {
         "operationId": "BusquedaController_buscar",
@@ -8379,7 +8437,7 @@
       "get": {
         "operationId": "OfertaController_mapaDeAsientos",
         "summary": "Obtener mapa de asientos por segmento",
-        "description": "Asientos físicos de la aeronave del segmento, sin precios. Un asiento no está disponible si una reserva ya lo tiene asignado o si su cabina no se vende en esta salida (las retenciones toman cupo, no asientos).",
+        "description": "Asientos físicos de la aeronave del segmento, sin precios. Un asiento no está disponible si una reserva ya lo tiene asignado, si lo aparta un hold vigente (assignedSeats del hold de la fachada v2) o si su cabina no se vende en esta salida.",
         "parameters": [
           {
             "name": "offerId",
@@ -9088,99 +9146,6 @@
         ]
       }
     },
-    "/flights/v1/bookings/{bookingId}/boarding-passes": {
-      "get": {
-        "operationId": "PaseAbordarController_consultar",
-        "summary": "Consultar pases de abordar",
-        "description": "Un pase por pasajero con asiento y vuelo con check-in, emitido al hacerlo y estable: pedirlos dos veces da lo mismo. Sin check-in, lista vacía. Los infantes no tienen pase propio. El barcode es un texto firmado con el PNR, el boleto, el vuelo, la fecha, la ruta, el asiento y el orden del pasajero; sin datos personales.",
-        "parameters": [
-          {
-            "name": "bookingId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Pases de abordar disponibles",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ListaPasesDto"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "bookingId no es un uuid",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Falta el token, no es válido o venció (WWW-Authenticate: Bearer)",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "El token no trae los scopes requeridos: flights:read",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "La reserva no existe o es de otro usuario",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Más de 100 peticiones por IP en un minuto (límite global, RATE_LIMIT_MAX; con Retry-After)",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "Check-in y Boarding Pass"
-        ],
-        "security": [
-          {
-            "OAuth2Security": [
-              "flights:read"
-            ]
-          },
-          {
-            "bearer": []
-          }
-        ]
-      }
-    },
     "/flights/v1/flights/{flightNumber}/status": {
       "get": {
         "operationId": "EstadoVueloController_estado",
@@ -9254,12 +9219,605 @@
           "Estado de Vuelos"
         ]
       }
+    },
+    "/flights/v1/kiosk/lookup": {
+      "post": {
+        "operationId": "KioskoController_buscar",
+        "summary": "Buscar una reserva por PNR y apellido",
+        "description": "Pública. Si el apellido es el de algún pasajero de la reserva (sin importar mayúsculas, tildes, espacios ni guiones), devuelve lo que el kiosko muestra (vuelos, horarios, asientos, estado de check-in por vuelo y nombres) y una sesión de 10 minutos limitada a esa reserva. Un PNR que no existe y un apellido que no coincide responden el mismo 404. El PNR y el apellido van en el cuerpo, nunca en la URL.",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BuscarEnKioskoDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "La reserva y su sesión de kiosko",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SesionKioskoDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "pnr no son 6 letras o dígitos, o falta lastName",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No hay una reserva con ese PNR y ese apellido (no se dice cuál falló)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Más de 10 búsquedas por IP en un minuto (con Retry-After)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Kiosko"
+        ]
+      }
+    },
+    "/flights/v1/kiosk/bookings/{bookingId}/check-in": {
+      "post": {
+        "operationId": "KioskoController_hacerCheckin",
+        "summary": "Hacer el check-in de la reserva abierta en el kiosko",
+        "description": "Sin cuenta: exige `Authorization: Kiosk <kioskToken>` con la sesión que dio la búsqueda, que solo sirve para esa reserva. Es el mismo check-in de POST /bookings/{bookingId}/check-in (mismas reglas, misma respuesta, idempotente).",
+        "parameters": [
+          {
+            "name": "authorization",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "bookingId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Check-in realizado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckInRespuestaDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "bookingId no es un uuid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "KIOSK_SESSION_INVALID: la sesión falta, está alterada o venció",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "La sesión es de otra reserva",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "CHECK_IN_NOT_AVAILABLE, como en el check-in del contrato",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "CHECK_IN_FAILED, como en el check-in del contrato",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Más de 20 check-in por IP en un minuto",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Kiosko"
+        ],
+        "security": [
+          {
+            "kiosko": []
+          }
+        ]
+      }
+    },
+    "/flights/v1/kiosk/bookings/{bookingId}/boarding-passes": {
+      "get": {
+        "operationId": "KioskoController_pases",
+        "summary": "Pases de abordar de la reserva abierta en el kiosko",
+        "description": "Sin cuenta: exige `Authorization: Kiosk <kioskToken>`. Los mismos pases de GET /bookings/{bookingId}/boarding-passes (lista vacía sin check-in).",
+        "parameters": [
+          {
+            "name": "authorization",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "bookingId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Pases de abordar disponibles",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListaPasesDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "bookingId no es un uuid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "KIOSK_SESSION_INVALID: la sesión falta, está alterada o venció",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "La sesión es de otra reserva",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Más de 60 consultas por IP en un minuto",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Kiosko"
+        ],
+        "security": [
+          {
+            "kiosko": []
+          }
+        ]
+      }
+    },
+    "/flights/v1/airports/{iataCode}/departures": {
+      "get": {
+        "operationId": "TableroSalidasController_salidas",
+        "summary": "Salidas de un aeropuerto en una fecha local",
+        "description": "Pública. Para una pantalla de vuelos: número de vuelo, aerolínea, destino, hora programada y estimada en hora LOCAL del aeropuerto (con su desplazamiento), estado y, si existen, terminal y puerta. Incluye las salidas canceladas. Por hora programada, de 50 en 50 (hasta 100) con `nextCursor`. No trae datos de reservas, cupos ni pasajeros.",
+        "parameters": [
+          {
+            "name": "iataCode",
+            "required": true,
+            "in": "path",
+            "description": "Aeropuerto de salida (3 letras)",
+            "schema": {
+              "example": "UIO",
+              "type": "string"
+            }
+          },
+          {
+            "name": "date",
+            "required": false,
+            "in": "query",
+            "description": "Fecha LOCAL del aeropuerto (YYYY-MM-DD). Sin ella, hoy en su zona horaria",
+            "schema": {
+              "format": "date",
+              "example": "2026-10-20",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "El `nextCursor` de la página anterior",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Una página de salidas",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalidasPublicasDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "iataCode, date, limit o cursor inválidos",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No hay un aeropuerto activo con ese código",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Más de 60 consultas por IP en un minuto (con Retry-After)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Salidas públicas"
+        ]
+      }
+    },
+    "/flights/v1/webhooks": {
+      "get": {
+        "operationId": "WebhookController_listar",
+        "summary": "Listar suscripciones",
+        "description": "Las suscripciones activas del usuario. El secreto va enmascarado (**** y sus últimos 4 caracteres).",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Suscripciones activas",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WebhookDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta el token, no es válido o venció (WWW-Authenticate: Bearer)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El token no trae los scopes requeridos: flights:webhooks",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Más de 100 peticiones por IP en un minuto (límite global, RATE_LIMIT_MAX; con Retry-After)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Webhooks"
+        ],
+        "security": [
+          {
+            "OAuth2Security": [
+              "flights:webhooks"
+            ]
+          },
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "WebhookController_crear",
+        "summary": "Registrar webhook",
+        "description": "A lo sumo 10 suscripciones activas por usuario. Cada entrega es un POST con el WebhookPayload y las cabeceras X-Webhook-Event, X-Webhook-Id (eventId), X-Webhook-Timestamp (segundos desde 1970) y X-Webhook-Signature: sha256=<HMAC-SHA256 de \"timestamp.cuerpo\" con el secreto>. Se reintenta con espera creciente; respuesta 2xx = recibido.",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SolicitudWebhookDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Webhook registrado (secreto enmascarado)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Cuerpo inválido o URL que no es un destino permitido",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta el token, no es válido o venció (WWW-Authenticate: Bearer)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El token no trae los scopes requeridos: flights:webhooks",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Ya tiene 10 suscripciones activas o esa URL activa",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Más de 10 altas por IP en un minuto",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Webhooks"
+        ],
+        "security": [
+          {
+            "OAuth2Security": [
+              "flights:webhooks"
+            ]
+          },
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/flights/v1/webhooks/{id}": {
+      "delete": {
+        "operationId": "WebhookController_eliminar",
+        "summary": "Eliminar suscripción",
+        "description": "Baja lógica: deja de recibir eventos. Una suscripción ajena o que no está activa es 404.",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Eliminado"
+          },
+          "400": {
+            "description": "id no es un uuid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta el token, no es válido o venció (WWW-Authenticate: Bearer)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El token no trae los scopes requeridos: flights:webhooks",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "La suscripción no existe, no está activa o es de otro usuario",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Más de 100 peticiones por IP en un minuto (límite global, RATE_LIMIT_MAX; con Retry-After)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Webhooks"
+        ],
+        "security": [
+          {
+            "OAuth2Security": [
+              "flights:webhooks"
+            ]
+          },
+          {
+            "bearer": []
+          }
+        ]
+      }
     }
   },
   "info": {
     "title": "Quinde · API de Vuelos",
     "description": "Implementación del contrato GDS Flight Core API v1.5.0.0 para vuelos nacionales de Ecuador.",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "contact": {}
   },
   "tags": [
@@ -9350,6 +9908,18 @@
     {
       "name": "Admin · Reservas",
       "description": "Fuera del contrato: administración (scope flights:admin). DELETE da de baja (activo = false), no borra."
+    },
+    {
+      "name": "Admin · Embarque",
+      "description": "Fuera del contrato: la puerta de embarque (scope flights:admin). Escanea pases y muestra el manifiesto de una salida"
+    },
+    {
+      "name": "Kiosko",
+      "description": "Fuera del contrato: kiosko de check-in sin cuenta, por PNR y apellido. La búsqueda entrega una sesión de 10 minutos limitada a esa reserva (Authorization: Kiosk <token>)"
+    },
+    {
+      "name": "Salidas públicas",
+      "description": "Fuera del contrato: la pantalla pública de salidas de un aeropuerto, en hora local. Sin datos de pasajeros"
     }
   ],
   "servers": [],
@@ -9389,6 +9959,12 @@
           }
         },
         "description": "Esquema del contrato (proveedor de identidad externo, no disponible en RDA1). Muestra los scopes de cada operación; para probar la API usa \"bearer\"."
+      },
+      "kiosko": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "Authorization",
+        "description": "Sesión de kiosko: escribe `Kiosk ` seguido del kioskToken de POST /flights/v1/kiosk/lookup. Vale 10 minutos y solo para esa reserva"
       }
     },
     "schemas": {
@@ -9418,7 +9994,17 @@
           "CHECK_IN_FAILED",
           "BOARDING_PASS_NOT_AVAILABLE",
           "SEAT_CABIN_MISMATCH",
-          "FLIGHT_STATUS_NOT_AVAILABLE"
+          "FLIGHT_STATUS_NOT_AVAILABLE",
+          "AUTH_UNAVAILABLE",
+          "BOARDING_PASS_MALFORMED",
+          "BOARDING_PASS_SIGNATURE_INVALID",
+          "BOARDING_PASS_NOT_FOUND",
+          "BOARDING_PASS_NOT_VALID",
+          "BOARDING_PASS_WRONG_FLIGHT",
+          "PASSENGER_NOT_CHECKED_IN",
+          "ALREADY_BOARDED",
+          "FLIGHT_CANCELLED",
+          "KIOSK_SESSION_INVALID"
         ]
       },
       "ProblemDetails": {
@@ -10624,6 +11210,12 @@
             "example": null,
             "nullable": true
           },
+          "departureGate": {
+            "type": "string",
+            "example": "A3",
+            "nullable": true,
+            "description": "Puerta de embarque; la muestra la pantalla pública de salidas"
+          },
           "status": {
             "type": "string",
             "enum": [
@@ -10673,6 +11265,7 @@
           "actualArrival",
           "departureTerminal",
           "arrivalTerminal",
+          "departureGate",
           "status",
           "seatMapId",
           "aircraftModel",
@@ -10719,6 +11312,13 @@
             "example": null,
             "nullable": true,
             "maxLength": 10
+          },
+          "departureGate": {
+            "type": "string",
+            "example": "A3",
+            "nullable": true,
+            "pattern": "^[A-Za-z0-9-]{1,10}$",
+            "description": "Puerta de embarque: de 1 a 10 letras, dígitos o guiones; null la quita"
           },
           "flightNumber": {
             "type": "string",
@@ -10767,6 +11367,13 @@
             "example": null,
             "nullable": true,
             "maxLength": 10
+          },
+          "departureGate": {
+            "type": "string",
+            "example": "A3",
+            "nullable": true,
+            "pattern": "^[A-Za-z0-9-]{1,10}$",
+            "description": "Puerta de embarque: de 1 a 10 letras, dígitos o guiones; null la quita"
           },
           "scheduledDeparture": {
             "type": "string",
@@ -10817,99 +11424,6 @@
             }
           }
         }
-      },
-      "WebhookDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "readOnly": true
-          },
-          "url": {
-            "type": "string",
-            "example": "https://partner.example.com/hooks/vuelos",
-            "format": "uri"
-          },
-          "events": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "enum": [
-                "booking.confirmed",
-                "booking.failed",
-                "booking.changed",
-                "booking.cancelled",
-                "booking.baggage_added",
-                "hold.expired",
-                "flight.schedule_changed",
-                "flight.cancelled",
-                "booking.ticket_issuing",
-                "booking.ticket_issued",
-                "booking.ticket_failed",
-                "booking.checked_in"
-              ]
-            }
-          },
-          "secret": {
-            "type": "string",
-            "example": "****e-largo",
-            "description": "**** y los últimos 4 caracteres"
-          }
-        },
-        "required": [
-          "id",
-          "url",
-          "events",
-          "secret"
-        ]
-      },
-      "SolicitudWebhookDto": {
-        "type": "object",
-        "properties": {
-          "url": {
-            "type": "string",
-            "example": "https://partner.example.com/hooks/vuelos",
-            "format": "uri",
-            "description": "https en producción; con NODE_ENV distinto de production también http://localhost. No se aceptan destinos que resuelvan a redes privadas, loopback, link-local o metadata"
-          },
-          "events": {
-            "type": "array",
-            "minItems": 1,
-            "example": [
-              "booking.confirmed",
-              "booking.cancelled"
-            ],
-            "items": {
-              "type": "string",
-              "enum": [
-                "booking.confirmed",
-                "booking.failed",
-                "booking.changed",
-                "booking.cancelled",
-                "booking.baggage_added",
-                "hold.expired",
-                "flight.schedule_changed",
-                "flight.cancelled",
-                "booking.ticket_issuing",
-                "booking.ticket_issued",
-                "booking.ticket_failed",
-                "booking.checked_in"
-              ]
-            }
-          },
-          "secret": {
-            "type": "string",
-            "minLength": 16,
-            "example": "un-secreto-compartido-largo",
-            "description": "Con él se firma cada entrega (HMAC-SHA256). Se guarda cifrado y nunca se devuelve: las respuestas traen **** y sus últimos 4 caracteres"
-          }
-        },
-        "required": [
-          "url",
-          "events",
-          "secret"
-        ]
       },
       "PrecioPasajeroRespuestaDto": {
         "type": "object",
@@ -12393,6 +12907,360 @@
           "quoteId"
         ]
       },
+      "EscanearPaseDto": {
+        "type": "object",
+        "properties": {
+          "barcode": {
+            "type": "string",
+            "example": "BP1|K7M2QX|0451331201527|LA1400|20261020|UIOGYE|10A|001|9f2c41b7a0d3",
+            "maxLength": 120,
+            "description": "El texto que leyó el lector, tal cual: el `barcode` de un pase de abordar"
+          }
+        },
+        "required": [
+          "barcode"
+        ]
+      },
+      "PasajeroAbordadoDto": {
+        "type": "object",
+        "properties": {
+          "passengerId": {
+            "type": "string",
+            "example": "ADU1"
+          },
+          "firstName": {
+            "type": "string",
+            "example": "Ana María"
+          },
+          "lastName": {
+            "type": "string",
+            "example": "D'Alessio Pérez"
+          }
+        },
+        "required": [
+          "passengerId",
+          "firstName",
+          "lastName"
+        ]
+      },
+      "AbordajeDto": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "string",
+            "enum": [
+              "BOARDED"
+            ],
+            "example": "BOARDED"
+          },
+          "departureId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "La salida (segmentId) que la puerta embarca"
+          },
+          "flightNumber": {
+            "type": "string",
+            "example": "LA1400"
+          },
+          "seat": {
+            "type": "string",
+            "example": "10A"
+          },
+          "boardingGroup": {
+            "type": "string",
+            "example": "3",
+            "nullable": true
+          },
+          "boardingPosition": {
+            "type": "string",
+            "example": "010",
+            "nullable": true
+          },
+          "boardedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC, la hora del servidor"
+          },
+          "passenger": {
+            "description": "Nombre del pasajero, para compararlo con su documento. Excepción a la regla de datos personales, limitada a esta respuesta: sin documento, correo ni teléfono",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PasajeroAbordadoDto"
+              }
+            ]
+          },
+          "infants": {
+            "description": "Los infantes que viajan en brazos de ese pasajero y abordaron con su pase",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PasajeroAbordadoDto"
+            }
+          }
+        },
+        "required": [
+          "result",
+          "departureId",
+          "flightNumber",
+          "seat",
+          "boardingGroup",
+          "boardingPosition",
+          "boardedAt",
+          "passenger",
+          "infants"
+        ]
+      },
+      "ConteoInfantesDto": {
+        "type": "object",
+        "properties": {
+          "sold": {
+            "type": "number",
+            "example": 1
+          },
+          "checkedIn": {
+            "type": "number",
+            "example": 1
+          },
+          "boarded": {
+            "type": "number",
+            "example": 0
+          }
+        },
+        "required": [
+          "sold",
+          "checkedIn",
+          "boarded"
+        ]
+      },
+      "ConteoManifiestoDto": {
+        "type": "object",
+        "properties": {
+          "sold": {
+            "type": "number",
+            "example": 120,
+            "description": "Asientos asignados y sin liberar"
+          },
+          "checkedIn": {
+            "type": "number",
+            "example": 98,
+            "description": "Con check-in (incluye los que ya abordaron)"
+          },
+          "boarded": {
+            "type": "number",
+            "example": 40
+          },
+          "infants": {
+            "description": "Infantes en brazos: no ocupan asiento",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ConteoInfantesDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "sold",
+          "checkedIn",
+          "boarded",
+          "infants"
+        ]
+      },
+      "AsientoManifiestoDto": {
+        "type": "object",
+        "properties": {
+          "seat": {
+            "type": "string",
+            "example": "10A"
+          },
+          "cabinClass": {
+            "type": "string",
+            "enum": [
+              "ECONOMY",
+              "PREMIUM_ECONOMY",
+              "BUSINESS",
+              "FIRST"
+            ],
+            "example": "ECONOMY"
+          },
+          "pnr": {
+            "type": "string",
+            "example": "K7M2QX",
+            "description": "Para buscar la reserva en /admin/bookings"
+          },
+          "passengerId": {
+            "type": "string",
+            "example": "ADU1"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "BOOKED",
+              "TICKETED",
+              "CHECKED_IN",
+              "BOARDED"
+            ],
+            "example": "CHECKED_IN"
+          },
+          "boardingGroup": {
+            "type": "string",
+            "example": "3",
+            "nullable": true,
+            "description": "null sin check-in"
+          },
+          "boardedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "UTC; null si no abordó"
+          }
+        },
+        "required": [
+          "seat",
+          "cabinClass",
+          "pnr",
+          "passengerId",
+          "status",
+          "boardingGroup",
+          "boardedAt"
+        ]
+      },
+      "ManifiestoDto": {
+        "type": "object",
+        "properties": {
+          "departureId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "flightNumber": {
+            "type": "string",
+            "example": "LA1400"
+          },
+          "date": {
+            "type": "string",
+            "example": "2026-10-20",
+            "format": "date",
+            "description": "Fecha local de salida"
+          },
+          "origin": {
+            "type": "string",
+            "example": "UIO"
+          },
+          "destination": {
+            "type": "string",
+            "example": "GYE"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "SCHEDULED",
+              "BOARDING",
+              "DEPARTED",
+              "DELAYED",
+              "ARRIVED",
+              "CANCELLED",
+              "DIVERTED"
+            ],
+            "example": "BOARDING"
+          },
+          "gate": {
+            "type": "string",
+            "example": "A3",
+            "nullable": true
+          },
+          "counts": {
+            "$ref": "#/components/schemas/ConteoManifiestoDto"
+          },
+          "seats": {
+            "description": "Por fila y letra. Sin nombre, documento ni correo",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AsientoManifiestoDto"
+            }
+          }
+        },
+        "required": [
+          "departureId",
+          "flightNumber",
+          "date",
+          "origin",
+          "destination",
+          "status",
+          "gate",
+          "counts",
+          "seats"
+        ]
+      },
+      "PaseAbordarDto": {
+        "type": "object",
+        "properties": {
+          "passengerId": {
+            "type": "string",
+            "example": "PAX1"
+          },
+          "segmentId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "segmentId del vuelo"
+          },
+          "seat": {
+            "type": "string",
+            "example": "10A"
+          },
+          "boardingGroup": {
+            "type": "string",
+            "example": "3",
+            "nullable": true,
+            "description": "Por cabina: 1 ejecutiva o primera, 2 económica premium, 3 económica"
+          },
+          "boardingPosition": {
+            "type": "string",
+            "example": "010",
+            "nullable": true,
+            "description": "La fila del asiento con tres dígitos"
+          },
+          "barcode": {
+            "type": "string",
+            "example": "BP1|K7M2QX|0451331201527|LA1400|20261020|UIOGYE|10A|001|9f2c41b7a0d3",
+            "description": "PNR, boleto, vuelo, fecha, ruta, asiento y orden, con una firma. Sin datos personales"
+          },
+          "barcodeType": {
+            "type": "string",
+            "enum": [
+              "AZTEC",
+              "PDF417",
+              "QR"
+            ],
+            "example": "PDF417"
+          }
+        },
+        "required": [
+          "passengerId",
+          "segmentId",
+          "seat",
+          "boardingGroup",
+          "boardingPosition",
+          "barcode",
+          "barcodeType"
+        ]
+      },
+      "ListaPasesDto": {
+        "type": "object",
+        "properties": {
+          "bookingId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "boardingPasses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PaseAbordarDto"
+            }
+          }
+        },
+        "required": [
+          "bookingId",
+          "boardingPasses"
+        ]
+      },
       "TramoSolicitadoDto": {
         "type": "object",
         "properties": {
@@ -12408,7 +13276,7 @@
           },
           "departureDate": {
             "type": "string",
-            "example": "2026-10-24",
+            "example": "2026-11-26",
             "format": "date",
             "description": "Fecha local de salida en el aeropuerto de origen (la semilla cubre 90 días)"
           }
@@ -12429,7 +13297,7 @@
               {
                 "origin": "UIO",
                 "destination": "GYE",
-                "departureDate": "2026-10-24"
+                "departureDate": "2026-11-26"
               }
             ],
             "type": "array",
@@ -12527,7 +13395,7 @@
           "isAvailable": {
             "type": "boolean",
             "example": true,
-            "description": "false si ya está asignado en una reserva o su cabina no se vende en esta salida"
+            "description": "false si ya está asignado en una reserva, lo aparta un hold vigente o su cabina no se vende en esta salida"
           },
           "characteristics": {
             "type": "array",
@@ -12721,7 +13589,7 @@
           },
           "newDepartureDate": {
             "type": "string",
-            "example": "2026-10-31",
+            "example": "2026-12-03",
             "format": "date",
             "description": "Nueva fecha local de salida en el origen del itinerario"
           }
@@ -12948,78 +13816,6 @@
           "checkedInPassengers"
         ]
       },
-      "PaseAbordarDto": {
-        "type": "object",
-        "properties": {
-          "passengerId": {
-            "type": "string",
-            "example": "PAX1"
-          },
-          "segmentId": {
-            "type": "string",
-            "format": "uuid",
-            "description": "segmentId del vuelo"
-          },
-          "seat": {
-            "type": "string",
-            "example": "10A"
-          },
-          "boardingGroup": {
-            "type": "string",
-            "example": "3",
-            "nullable": true,
-            "description": "Por cabina: 1 ejecutiva o primera, 2 económica premium, 3 económica"
-          },
-          "boardingPosition": {
-            "type": "string",
-            "example": "010",
-            "nullable": true,
-            "description": "La fila del asiento con tres dígitos"
-          },
-          "barcode": {
-            "type": "string",
-            "example": "BP1|K7M2QX|0451331201527|LA1400|20261020|UIOGYE|10A|001|9f2c41b7a0d3",
-            "description": "PNR, boleto, vuelo, fecha, ruta, asiento y orden, con una firma. Sin datos personales"
-          },
-          "barcodeType": {
-            "type": "string",
-            "enum": [
-              "AZTEC",
-              "PDF417",
-              "QR"
-            ],
-            "example": "PDF417"
-          }
-        },
-        "required": [
-          "passengerId",
-          "segmentId",
-          "seat",
-          "boardingGroup",
-          "boardingPosition",
-          "barcode",
-          "barcodeType"
-        ]
-      },
-      "ListaPasesDto": {
-        "type": "object",
-        "properties": {
-          "bookingId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "boardingPasses": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/PaseAbordarDto"
-            }
-          }
-        },
-        "required": [
-          "bookingId",
-          "boardingPasses"
-        ]
-      },
       "ExtremoEstadoDto": {
         "type": "object",
         "properties": {
@@ -13117,6 +13913,488 @@
           "arrival",
           "aircraft",
           "status"
+        ]
+      },
+      "BuscarEnKioskoDto": {
+        "type": "object",
+        "properties": {
+          "pnr": {
+            "type": "string",
+            "example": "K7M2QX",
+            "description": "El localizador de 6 letras o dígitos"
+          },
+          "lastName": {
+            "type": "string",
+            "example": "Pérez",
+            "maxLength": 100,
+            "description": "El apellido completo de cualquier pasajero de la reserva. No importan mayúsculas, tildes, espacios ni guiones"
+          }
+        },
+        "required": [
+          "pnr",
+          "lastName"
+        ]
+      },
+      "PasajeroKioskoDto": {
+        "type": "object",
+        "properties": {
+          "passengerId": {
+            "type": "string",
+            "example": "ADU1"
+          },
+          "passengerType": {
+            "type": "string",
+            "enum": [
+              "ADULT",
+              "YOUTH",
+              "CHILD",
+              "INFANT"
+            ],
+            "example": "ADULT"
+          },
+          "firstName": {
+            "type": "string",
+            "example": "Ana María"
+          },
+          "lastName": {
+            "type": "string",
+            "example": "Pérez"
+          }
+        },
+        "required": [
+          "passengerId",
+          "passengerType",
+          "firstName",
+          "lastName"
+        ]
+      },
+      "VentanaKioskoDto": {
+        "type": "object",
+        "properties": {
+          "window": {
+            "type": "string",
+            "enum": [
+              "OPEN",
+              "NOT_YET_OPEN",
+              "CLOSED"
+            ],
+            "example": "OPEN"
+          },
+          "opensAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC"
+          },
+          "closesAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC"
+          }
+        },
+        "required": [
+          "window",
+          "opensAt",
+          "closesAt"
+        ]
+      },
+      "PasajeroEnVueloKioskoDto": {
+        "type": "object",
+        "properties": {
+          "passengerId": {
+            "type": "string",
+            "example": "ADU1"
+          },
+          "seat": {
+            "type": "string",
+            "example": "10A",
+            "nullable": true,
+            "description": "null para un infante"
+          },
+          "checkInStatus": {
+            "type": "string",
+            "enum": [
+              "CHECKED_IN",
+              "NOT_CHECKED_IN",
+              "FAILED"
+            ],
+            "example": "NOT_CHECKED_IN",
+            "description": "El mismo estado por segmento de CheckInResponse"
+          }
+        },
+        "required": [
+          "passengerId",
+          "seat",
+          "checkInStatus"
+        ]
+      },
+      "VueloKioskoDto": {
+        "type": "object",
+        "properties": {
+          "segmentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "flightNumber": {
+            "type": "string",
+            "example": "LA1400"
+          },
+          "origin": {
+            "type": "string",
+            "example": "UIO"
+          },
+          "destination": {
+            "type": "string",
+            "example": "GYE"
+          },
+          "departureAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC"
+          },
+          "arrivalAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC"
+          },
+          "departureTerminal": {
+            "type": "string",
+            "example": null,
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "SCHEDULED",
+              "BOARDING",
+              "DEPARTED",
+              "DELAYED",
+              "ARRIVED",
+              "CANCELLED",
+              "DIVERTED"
+            ],
+            "example": "SCHEDULED"
+          },
+          "checkIn": {
+            "$ref": "#/components/schemas/VentanaKioskoDto"
+          },
+          "passengers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PasajeroEnVueloKioskoDto"
+            }
+          }
+        },
+        "required": [
+          "segmentId",
+          "flightNumber",
+          "origin",
+          "destination",
+          "departureAt",
+          "arrivalAt",
+          "departureTerminal",
+          "status",
+          "checkIn",
+          "passengers"
+        ]
+      },
+      "ReservaKioskoDto": {
+        "type": "object",
+        "properties": {
+          "bookingId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Va en la ruta del check-in y de los pases"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "PENDING_PAYMENT",
+              "TICKET_ISSUING",
+              "CONFIRMED",
+              "FAILED",
+              "CHANGE_PENDING",
+              "CANCELLATION_PENDING",
+              "CANCELLED"
+            ],
+            "example": "CONFIRMED"
+          },
+          "passengers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PasajeroKioskoDto"
+            }
+          },
+          "flights": {
+            "description": "En orden de viaje",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VueloKioskoDto"
+            }
+          }
+        },
+        "required": [
+          "bookingId",
+          "status",
+          "passengers",
+          "flights"
+        ]
+      },
+      "SesionKioskoDto": {
+        "type": "object",
+        "properties": {
+          "kioskToken": {
+            "type": "string",
+            "example": "ksk1.eyJyIjoi….3q2-7w",
+            "description": "La sesión del kiosko: se manda en `Authorization: Kiosk <kioskToken>` al check-in y a los pases de ESTA reserva. No sirve para otra ni como token de acceso"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC; 10 minutos después de la búsqueda"
+          },
+          "booking": {
+            "description": "Solo lo que el kiosko muestra: sin documento, correo, teléfono, precio ni PNR",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReservaKioskoDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "kioskToken",
+          "expiresAt",
+          "booking"
+        ]
+      },
+      "AeropuertoSalidasDto": {
+        "type": "object",
+        "properties": {
+          "iataCode": {
+            "type": "string",
+            "example": "UIO"
+          },
+          "name": {
+            "type": "string",
+            "example": "Aeropuerto Internacional Mariscal Sucre"
+          },
+          "city": {
+            "type": "string",
+            "example": "Quito"
+          },
+          "timeZone": {
+            "type": "string",
+            "example": "America/Guayaquil",
+            "description": "Zona horaria IANA de las horas"
+          }
+        },
+        "required": [
+          "iataCode",
+          "name",
+          "city",
+          "timeZone"
+        ]
+      },
+      "DestinoSalidaDto": {
+        "type": "object",
+        "properties": {
+          "iataCode": {
+            "type": "string",
+            "example": "GYE"
+          },
+          "city": {
+            "type": "string",
+            "example": "Guayaquil"
+          }
+        },
+        "required": [
+          "iataCode",
+          "city"
+        ]
+      },
+      "SalidaPublicaDto": {
+        "type": "object",
+        "properties": {
+          "flightNumber": {
+            "type": "string",
+            "example": "LA1400"
+          },
+          "airline": {
+            "type": "string",
+            "example": "LATAM Airlines Ecuador"
+          },
+          "destination": {
+            "$ref": "#/components/schemas/DestinoSalidaDto"
+          },
+          "scheduledTime": {
+            "type": "string",
+            "example": "2026-10-20T06:30:00-05:00",
+            "description": "Hora programada, en hora local del aeropuerto con su desplazamiento"
+          },
+          "estimatedTime": {
+            "type": "string",
+            "example": null,
+            "nullable": true,
+            "description": "Hora estimada, en hora local del aeropuerto; null mientras no se conozca"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "SCHEDULED",
+              "BOARDING",
+              "DEPARTED",
+              "DELAYED",
+              "ARRIVED",
+              "CANCELLED",
+              "DIVERTED"
+            ],
+            "example": "SCHEDULED"
+          },
+          "terminal": {
+            "type": "string",
+            "example": null,
+            "nullable": true
+          },
+          "gate": {
+            "type": "string",
+            "example": "A3",
+            "nullable": true,
+            "description": "null mientras no se asigne"
+          }
+        },
+        "required": [
+          "flightNumber",
+          "airline",
+          "destination",
+          "scheduledTime",
+          "estimatedTime",
+          "status",
+          "terminal",
+          "gate"
+        ]
+      },
+      "SalidasPublicasDto": {
+        "type": "object",
+        "properties": {
+          "airport": {
+            "$ref": "#/components/schemas/AeropuertoSalidasDto"
+          },
+          "date": {
+            "type": "string",
+            "example": "2026-10-20",
+            "format": "date",
+            "description": "La fecha local pedida"
+          },
+          "departures": {
+            "description": "Por hora programada",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SalidaPublicaDto"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "description": "Pásalo como `cursor` para la siguiente. Sin él, no hay más"
+          }
+        },
+        "required": [
+          "airport",
+          "date",
+          "departures"
+        ]
+      },
+      "WebhookDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "readOnly": true
+          },
+          "url": {
+            "type": "string",
+            "example": "https://partner.example.com/hooks/vuelos",
+            "format": "uri"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "booking.confirmed",
+                "booking.failed",
+                "booking.changed",
+                "booking.cancelled",
+                "booking.baggage_added",
+                "hold.expired",
+                "flight.schedule_changed",
+                "flight.cancelled",
+                "booking.ticket_issuing",
+                "booking.ticket_issued",
+                "booking.ticket_failed",
+                "booking.checked_in"
+              ]
+            }
+          },
+          "secret": {
+            "type": "string",
+            "example": "****e-largo",
+            "description": "**** y los últimos 4 caracteres"
+          }
+        },
+        "required": [
+          "id",
+          "url",
+          "events",
+          "secret"
+        ]
+      },
+      "SolicitudWebhookDto": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "example": "https://partner.example.com/hooks/vuelos",
+            "format": "uri",
+            "description": "https en producción; con NODE_ENV distinto de production también http://localhost. No se aceptan destinos que resuelvan a redes privadas, loopback, link-local o metadata"
+          },
+          "events": {
+            "type": "array",
+            "minItems": 1,
+            "example": [
+              "booking.confirmed",
+              "booking.cancelled"
+            ],
+            "items": {
+              "type": "string",
+              "enum": [
+                "booking.confirmed",
+                "booking.failed",
+                "booking.changed",
+                "booking.cancelled",
+                "booking.baggage_added",
+                "hold.expired",
+                "flight.schedule_changed",
+                "flight.cancelled",
+                "booking.ticket_issuing",
+                "booking.ticket_issued",
+                "booking.ticket_failed",
+                "booking.checked_in"
+              ]
+            }
+          },
+          "secret": {
+            "type": "string",
+            "minLength": 16,
+            "example": "un-secreto-compartido-largo",
+            "description": "Con él se firma cada entrega (HMAC-SHA256). Se guarda cifrado y nunca se devuelve: las respuestas traen **** y sus últimos 4 caracteres"
+          }
+        },
+        "required": [
+          "url",
+          "events",
+          "secret"
         ]
       }
     }

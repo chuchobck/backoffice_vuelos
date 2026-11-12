@@ -371,9 +371,66 @@ async function main() {
       await page.context().close();
     }
 
+    /* ---------------------------------------------------------------- Puerta de embarque */
+    group('Puerta de embarque');
+    {
+      const { page, errors } = await newPage(browser, { width: 1280, height: 900 }, external);
+      await loginAdmin(page, '/embarque');
+      const fake = (call) => page.evaluate(`window.__quindeFake.${call}`);
+      await check('elegir la salida muestra el estado, la puerta y los conteos con barras con texto', async () => {
+        await page.getByRole('heading', { level: 1, name: 'Puerta de embarque' }).waitFor();
+        // La semilla tiene salidas desde mañana (mismo cálculo de fecha que la semilla)
+        const date = await page.evaluate(() => new Date(Date.now() - 5 * 3600_000 + 86_400_000).toISOString().slice(0, 10));
+        await page.getByLabel('Fecha de salida').fill(date);
+        const select = page.locator('main select').first();
+        await select.locator('option', { hasText: 'LA1400 ·' }).waitFor({ state: 'attached' });
+        await select.selectOption({ label: (await select.locator('option', { hasText: 'LA1400 ·' }).first().textContent()) ?? '' });
+        await page.getByRole('region', { name: /Salida LA1400/ }).waitFor();
+        await page.getByRole('progressbar', { name: 'Con check-in' }).waitFor();
+        eq(await page.getByRole('progressbar', { name: 'Con check-in' }).getAttribute('aria-valuetext'), '0 de 1 (0 %)', 'texto de la barra');
+        assert(await page.getByLabel('Código del pase').evaluate((el) => el === document.activeElement), 'el campo tiene el foco');
+        await page.getByRole('table', { name: /Manifiesto de la salida LA1400/ }).waitFor();
+        await axeScan(page, 'puerta de embarque');
+      });
+      await check('un pase sin check-in da un error claro (role=alert) y el campo queda listo', async () => {
+        const pass = await fake("passFor('K7M2QX')");
+        await page.getByLabel('Código del pase').fill(pass);
+        await page.keyboard.press('Enter');
+        await page.getByRole('alert').getByText(/todavía no hizo el check-in/).waitFor();
+        eq(await page.getByLabel('Código del pase').inputValue(), '', 'campo limpio');
+        assert(await page.getByLabel('Código del pase').evaluate((el) => el === document.activeElement), 'el campo recupera el foco');
+        await axeScan(page, 'puerta de embarque con error');
+      });
+      await check('tras el check-in el escaneo da ABORDÓ con el nombre, y a los 8 s el nombre desaparece', async () => {
+        await fake("checkIn('K7M2QX')");
+        const pass = await fake("passFor('K7M2QX')");
+        await page.getByLabel('Código del pase').fill(pass);
+        await page.keyboard.press('Enter');
+        const status = page.getByRole('status', { name: 'Resultado del escaneo' });
+        await status.getByText('ABORDÓ').waitFor();
+        await status.getByText('Ana Prueba 1').waitFor();
+        await axeScan(page, 'puerta de embarque con resultado');
+        await page.screenshot({ path: `${OUT}embarque-resultado.png`, fullPage: true });
+        await page.getByText('Ana Prueba 1').waitFor({ state: 'detached', timeout: 12_000 });
+        eq(await status.getByText('ABORDÓ').count(), 0, 'el resultado se borró');
+        eq(await page.getByText('Ana Prueba 1').count(), 0, 'el nombre no queda en pantalla');
+      });
+      await check('"Ver reserva" abre el detalle de esa reserva, con el check-in del pasajero', async () => {
+        await page.getByRole('link', { name: 'Ver reserva K7M2QX, asiento 10A' }).click();
+        const dialog = page.getByRole('dialog', { name: 'Reserva K7M2QX' });
+        await dialog.waitFor();
+        await dialog.getByRole('columnheader', { name: 'Check-in' }).waitFor();
+        await dialog.getByText(/^Abordó · \d{2}:\d{2}/).waitFor();
+        await page.waitForTimeout(500);
+        await axeScan(page, 'detalle de reserva con check-in');
+      });
+      await check('sin errores en la consola', async () => eq(errors, [], 'errores'));
+      await page.context().close();
+    }
+
     /* ---------------------------------------------------------------- Viewports */
     group('Responsive: 320, 768 y 1280 px');
-    const pages = ['/panel', '/vuelos', '/vuelos/crear', '/numeros-de-vuelo', '/rutas', '/tarifas', '/aeropuertos', '/familias-tarifarias', '/mapas-de-asientos', '/reservas', '/auditoria', '/administradores'];
+    const pages = ['/panel', '/vuelos', '/vuelos/crear', '/numeros-de-vuelo', '/rutas', '/tarifas', '/aeropuertos', '/familias-tarifarias', '/mapas-de-asientos', '/embarque', '/reservas', '/auditoria', '/administradores'];
     for (const width of [320, 768, 1280]) {
       const { page, errors } = await newPage(browser, { width, height: 800 }, external);
       await loginAdmin(page, '/panel');
@@ -390,7 +447,7 @@ async function main() {
       });
       await check(`${width}px: botones, enlaces del menú y campos miden al menos 44 px`, async () => {
         const bad = [];
-        for (const path of ['/panel', '/vuelos', '/aeropuertos', '/vuelos/crear', '/reservas', '/auditoria', '/administradores']) {
+        for (const path of ['/panel', '/vuelos', '/aeropuertos', '/vuelos/crear', '/embarque', '/reservas', '/auditoria', '/administradores']) {
           await page.goto(BASE + path);
           await page.locator('h1').waitFor();
           await page.waitForTimeout(300);
@@ -486,7 +543,7 @@ async function main() {
     {
       const { page } = await newPage(browser, { width: 1280, height: 900 }, external);
       await loginAdmin(page, '/panel');
-      const screens = ['/panel', '/vuelos', '/vuelos/crear', '/tarifas', '/aeropuertos', '/mapas-de-asientos', '/rutas', '/reservas', '/auditoria', '/administradores'];
+      const screens = ['/panel', '/vuelos', '/vuelos/crear', '/tarifas', '/aeropuertos', '/mapas-de-asientos', '/rutas', '/embarque', '/reservas', '/auditoria', '/administradores'];
       for (const dark of [false, true]) {
         await page.evaluate((d) => document.documentElement.classList.toggle('dark', d), dark);
         for (const path of screens) {

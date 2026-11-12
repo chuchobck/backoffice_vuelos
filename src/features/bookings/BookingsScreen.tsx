@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useBookings, type BookingSummary } from '@/shared/api';
 import { ResourceFilters, type FilterSpec } from '@/shared/crud';
 import { es, fmt } from '@/shared/i18n';
@@ -21,13 +21,27 @@ const FILTERS: FilterSpec[] = [
   { name: 'flightNumber', label: t.filters.flightNumber, kind: 'text', upper: true, maxLength: 6, pattern: /^[A-Z0-9]{2}[1-9][0-9]{0,3}$/, patternMessage: t.flightInvalid, placeholder: 'LA2410' },
 ];
 
-/** Reservas de todos los clientes: filtros del servidor, "Cargar más" por cursor, detalle y cancelación con confirmación. */
-export function BookingsScreen() {
-  const [filters, setFilters] = useState<Record<string, string>>({});
+/**
+ * Reservas de todos los clientes: filtros del servidor, "Cargar más" por cursor, detalle y cancelación con confirmación.
+ * `initialPnr` (enlace "Ver reserva" de la puerta de embarque) llega filtrado por ese PNR y abre su detalle.
+ */
+export function BookingsScreen({ initialPnr }: { initialPnr?: string }) {
+  const [filters, setFilters] = useState<Record<string, string>>(initialPnr ? { pnr: initialPnr } : {});
   const [detail, setDetail] = useState<{ bookingId: string; pnr: string } | null>(null);
   const [cancelTarget, setCancelTarget] = useState<{ bookingId: string; pnr: string } | null>(null);
   const query = useBookings(filters);
   const rows = useMemo(() => query.data?.pages.flatMap((p) => p.items) ?? [], [query.data]);
+
+  // Una sola vez: si el enlace trae un PNR y hay una reserva con ese PNR, se abre su detalle.
+  const autoOpened = useRef(false);
+  useEffect(() => {
+    if (!initialPnr || autoOpened.current) return;
+    const match = rows.find((b) => b.pnr === initialPnr);
+    if (match) {
+      autoOpened.current = true;
+      setDetail({ bookingId: match.bookingId, pnr: match.pnr });
+    }
+  }, [initialPnr, rows]);
 
   const columns: Column<BookingSummary>[] = [
     { id: 'pnr', header: t.cols.pnr, cell: (b) => <span className="font-mono font-bold">{b.pnr}</span> },

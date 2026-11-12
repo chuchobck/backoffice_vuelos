@@ -76,6 +76,14 @@ export function formatLocal(iso: string | null | undefined, zone: string): strin
   return new Intl.DateTimeFormat('es-EC', { timeZone: zone, dateStyle: 'medium', timeStyle: 'short' }).format(d);
 }
 
+/** Solo la hora, "08:42", en la zona indicada (la fecha ya se sabe por el contexto). */
+export function formatLocalTime(iso: string | null | undefined, zone: string): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return new Intl.DateTimeFormat('es-EC', { timeZone: zone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(d);
+}
+
 /** Hoy en la zona dada ("2026-10-09"). */
 export function todayIn(zone: string, now: Date = new Date()): string {
   return utcToLocal(now.toISOString(), zone).date;

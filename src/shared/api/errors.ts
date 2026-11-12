@@ -131,6 +131,42 @@ export function errorMessage(error: unknown): string {
   return e.unknown;
 }
 
+/**
+ * Mensaje de un escaneo en la puerta, por `code` (nunca el `detail`). Lo que no es del embarque (red, sesión, 5xx…) usa el mensaje general.
+ * Un 404 sin código es "la salida no existe"; con BOARDING_PASS_NOT_FOUND es "el boleto del pase no existe".
+ */
+export function boardingErrorMessage(error: unknown): string {
+  const b = es.boarding.errors;
+  if (!isApiError(error)) return e.unknown;
+  switch (error.code) {
+    case 'BOARDING_PASS_MALFORMED':
+      return b.malformed;
+    case 'BOARDING_PASS_SIGNATURE_INVALID':
+      return b.signatureInvalid;
+    case 'FLIGHT_CANCELLED':
+      return b.flightCancelled;
+    case 'FLIGHT_ALREADY_DEPARTED':
+      return b.flightDeparted;
+    case 'BOARDING_PASS_WRONG_FLIGHT':
+      return b.wrongFlight;
+    case 'BOARDING_PASS_NOT_VALID':
+      return b.notValid;
+    case 'PASSENGER_NOT_CHECKED_IN':
+      return b.notCheckedIn;
+    case 'BOARDING_PASS_NOT_FOUND':
+      return b.notFound;
+    case 'ALREADY_BOARDED':
+      return b.alreadyBoarded;
+    case 'RATE_LIMIT_EXCEEDED':
+      return b.rateLimited;
+    default:
+      break;
+  }
+  if (error.status === 429) return b.rateLimited;
+  if (error.status === 404 && error.code !== 'NOT_CONNECTED') return b.departureNotFound;
+  return errorMessage(error);
+}
+
 /** Mensaje para un error de ingreso: 401 es genérico (no revela si el correo existe). */
 export function loginErrorMessage(error: unknown): string {
   if (!isApiError(error)) return e.unknown;

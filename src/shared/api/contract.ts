@@ -61,6 +61,13 @@ export type BookingTicket = BookingDetail['tickets'][number];
 export type BookingItinerary = BookingDetail['itineraries'][number];
 export type BookingSegment = BookingItinerary['segments'][number];
 
+export type BoardingScanResult = S['AbordajeDto'];
+export type BoardedPassenger = S['PasajeroAbordadoDto'];
+export type BoardingManifest = S['ManifiestoDto'];
+export type ManifestSeat = S['AsientoManifiestoDto'];
+export type ManifestCounts = S['ConteoManifiestoDto'];
+export type ManifestSeatStatus = ManifestSeat['status'];
+
 export type CabinClass = CabinQuota['cabinClass'];
 export type PassengerType = PassengerPrice['passengerType'];
 export type DepartureStatus = Departure['status'];
@@ -73,6 +80,8 @@ export const AUDIT_OPERATIONS: readonly AuditOperation[] = ['INSERT', 'UPDATE', 
 export const BOOKING_STATUSES: readonly BookingStatus[] = [
   'PENDING', 'PENDING_PAYMENT', 'TICKET_ISSUING', 'CONFIRMED', 'FAILED', 'CHANGE_PENDING', 'CANCELLATION_PENDING', 'CANCELLED',
 ];
+/** Orden del recorrido de un pasajero: vendido → con boleto → con check-in → abordó. */
+export const MANIFEST_SEAT_STATUSES: readonly ManifestSeatStatus[] = ['BOOKED', 'TICKETED', 'CHECKED_IN', 'BOARDED'];
 export const CABIN_CLASSES: readonly CabinClass[] = ['ECONOMY', 'PREMIUM_ECONOMY', 'BUSINESS', 'FIRST'];
 export const DEPARTURE_STATUSES: readonly DepartureStatus[] = ['SCHEDULED', 'BOARDING', 'DEPARTED', 'DELAYED', 'ARRIVED', 'CANCELLED', 'DIVERTED'];
 export const PASSENGER_TYPES: readonly PassengerType[] = ['ADULT', 'YOUTH', 'CHILD', 'INFANT'];

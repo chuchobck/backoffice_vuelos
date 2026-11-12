@@ -2,7 +2,7 @@
  * Estado del servidor con TanStack Query: un hook por operación de `AdminApi`. Toda escritura
  * invalida las consultas del recurso (y las de los recursos que dependen de él, si se indican).
  */
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQueries, useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
 import type { AdminApi, ListQuery, Page, Resource, ResourceName } from './AdminApi';
 import { adminApi } from './instance';
 
@@ -159,5 +159,53 @@ export function useCancelBooking() {
   return useMutation({
     mutationFn: ({ id, key, reason }: { id: string; key: string; reason?: string }) => adminApi.bookings.cancel(id, key, reason),
     onSuccess: () => Promise.all([qc.invalidateQueries({ queryKey: bookingKeys.all }), qc.invalidateQueries({ queryKey: auditKeys.all })]),
+  });
+}
+
+export const boardingKeys = {
+  all: ['admin', 'boarding'] as const,
+  manifest: (departureId: string) => ['admin', 'boarding', 'manifest', departureId] as const,
+};
+
+/** Cada cuánto se vuelve a pedir el manifiesto de la puerta (además de justo después de cada escaneo exitoso). */
+export const MANIFEST_REFRESH_MS = 10_000;
+
+/**
+ * Manifiesto de una salida: solo asientos, estados y conteos (sin nombres ni documentos, por eso puede vivir en el caché).
+ * `refreshMs` lo refresca solo mientras la pestaña está visible (la puerta lo usa; el detalle de una reserva no).
+ */
+export function useManifest(departureId: string | undefined, refreshMs?: number) {
+  return useQuery({
+    queryKey: boardingKeys.manifest(departureId ?? ''),
+    queryFn: () => adminApi.boarding.manifest(departureId ?? ''),
+    enabled: !!departureId,
+    refetchInterval: refreshMs,
+    // Con un refresco periódico, un dato de hace 10 s ya no sirve; sin él vale el tiempo normal.
+    staleTime: refreshMs ?? 30_000,
+  });
+}
+
+/** Un manifiesto por salida (sin repetir), cada uno con su propio estado de carga y de error. */
+export function useManifests(departureIds: string[]) {
+  return useQueries({
+    queries: departureIds.map((id) => ({
+      queryKey: boardingKeys.manifest(id),
+      queryFn: () => adminApi.boarding.manifest(id),
+      staleTime: 30_000,
+    })),
+  });
+}
+
+/**
+ * Escaneo de un pase en la puerta. La respuesta trae el nombre del pasajero (excepción deliberada del backend para compararlo
+ * con su documento): `gcTime: 0` la saca del caché de mutaciones apenas nadie la observa, y quien llama hace `reset()` a los 8 s
+ * o al siguiente escaneo. Tras un escaneo exitoso se invalida el manifiesto (que sí se puede cachear: no trae nombres).
+ */
+export function useScanBoarding(departureId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (barcode: string) => adminApi.boarding.scan(departureId, barcode),
+    gcTime: 0,
+    onSuccess: () => qc.invalidateQueries({ queryKey: boardingKeys.manifest(departureId) }),
   });
 }

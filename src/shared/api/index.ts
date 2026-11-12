@@ -1,6 +1,6 @@
 export * from './AdminApi';
 export * from './contract';
-export { ApiError, errorMessage, fieldLabel, isApiError, loginErrorMessage } from './errors';
+export { ApiError, boardingErrorMessage, errorMessage, fieldLabel, isApiError, loginErrorMessage } from './errors';
 export { apiConfig, normalizeBase, resolveConfig, type BackofficeConfig, type ConfigIssue, type ResolvedConfig } from './config';
 export { setAuthBridge, authorized } from './authBridge';
 export { useServerWaking } from './http/useServerWaking';

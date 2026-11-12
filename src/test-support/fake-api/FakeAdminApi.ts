@@ -14,6 +14,7 @@ import type {
 import { ApiError } from '@/shared/api/errors';
 import { nextUuid } from './ids';
 import { createFakeAdminExtras, FAKE_ADMIN_ID } from './fake-admin';
+import { createFakeBoarding, type FakeBoardingControls } from './fake-boarding';
 import { buildSeed, summarizeCabins, type AirportRow, type FakeState } from './seed';
 
 export interface FakeOptions {
@@ -70,7 +71,10 @@ interface Spec<Row extends Active, Out, C, U, D = Out> {
   noun: string;
 }
 
-export function createFakeAdminApi(options: FakeOptions = {}): AdminApi {
+/** `AdminApi` de prueba más los controles para armar un escenario de embarque (check-in, infantes, pases con firma). */
+export type FakeAdminApi = AdminApi & { boardingControls: FakeBoardingControls };
+
+export function createFakeAdminApi(options: FakeOptions = {}): FakeAdminApi {
   const now = options.now ?? (() => new Date());
   const latency = options.latencyMs ?? 80;
   const wait = () => (latency > 0 ? new Promise<void>((r) => setTimeout(r, latency)) : Promise.resolve());
@@ -312,7 +316,7 @@ export function createFakeAdminApi(options: FakeOptions = {}): AdminApi {
         departureDate: new Date(dep.getTime() - zoneOffset * 3600_000).toISOString().slice(0, 10),
         scheduledDeparture: b.scheduledDeparture, scheduledArrival: b.scheduledArrival,
         estimatedDeparture: null, estimatedArrival: null, actualDeparture: null, actualArrival: null,
-        departureTerminal: b.departureTerminal ?? null, arrivalTerminal: b.arrivalTerminal ?? null, status: 'SCHEDULED', seatMapId: sm.id, aircraftModel: sm.aircraftModel,
+        departureTerminal: b.departureTerminal ?? null, arrivalTerminal: b.arrivalTerminal ?? null, departureGate: b.departureGate ?? null, status: 'SCHEDULED', seatMapId: sm.id, aircraftModel: sm.aircraftModel,
         cabins: cabins.map((c) => ({ cabinClass: c.cabinClass, totalSeats: c.totalSeats, availableSeats: c.totalSeats })), active: true,
       };
     },
@@ -320,6 +324,9 @@ export function createFakeAdminApi(options: FakeOptions = {}): AdminApi {
       const dep = new Date(b.scheduledDeparture ?? r.scheduledDeparture);
       const arr = new Date(b.scheduledArrival ?? r.scheduledArrival);
       if (!(arr > dep)) throw badBody('scheduledArrival', 'scheduledArrival must be after scheduledDeparture');
+      if (typeof b.departureGate === 'string' && (b.departureGate.length > 10 || b.departureGate !== b.departureGate.trim() || b.departureGate === '')) {
+        throw badBody('departureGate', 'departureGate must be at most 10 characters, without leading or trailing spaces');
+      }
       if ((b.status as string | undefined) === 'CANCELLED') throw badBody('status', 'status must be one of: ... (to cancel, use DELETE)');
       assign(r, b as Partial<Departure>);
       if (b.scheduledDeparture) {
@@ -368,6 +375,8 @@ export function createFakeAdminApi(options: FakeOptions = {}): AdminApi {
 
   const extras = createFakeAdminExtras({ now, wait, state: s, admin: FAKE_ACCOUNTS.admin, currentId: () => account.id });
 
+  const boarding = createFakeBoarding({ now, wait, state: s, bookings: extras.bookingDetails });
+
   const auth: AuthApi = {
     async login(c) {
       await wait();
@@ -391,5 +400,5 @@ export function createFakeAdminApi(options: FakeOptions = {}): AdminApi {
     },
   };
 
-  return { auth, countries, cities, airports, airlines, aircraftModels, fareFamilies, seatMaps, flightNumbers, departures, fares, admins: extras.admins, auditLog: extras.auditLog, bookings: extras.bookings };
+  return { auth, countries, cities, airports, airlines, aircraftModels, fareFamilies, seatMaps, flightNumbers, departures, fares, admins: extras.admins, auditLog: extras.auditLog, bookings: extras.bookings, boarding: boarding.api, boardingControls: boarding.controls };
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { es, fmt } from '@/shared/i18n';
-import { ApiError, errorMessage, fieldLabel, loginErrorMessage } from './errors';
+import { ApiError, boardingErrorMessage, errorMessage, fieldLabel, loginErrorMessage } from './errors';
 
 const e = es.errors;
 const err = (status: number, extra: Partial<ConstructorParameters<typeof ApiError>[0]> = {}) => new ApiError({ status, ...extra });
@@ -96,6 +96,36 @@ describe('errores de ingreso', () => {
   it('servidor caído y red, con los mensajes generales', () => {
     expect(loginErrorMessage(err(503))).toBe(e.unavailable503);
     expect(loginErrorMessage(err(0, { code: 'NETWORK' }))).toBe(e.network);
+  });
+});
+
+describe('mensajes de la puerta de embarque (por code, nunca el detail)', () => {
+  const b = es.boarding.errors;
+  it.each([
+    [400, 'BOARDING_PASS_MALFORMED', b.malformed],
+    [422, 'BOARDING_PASS_SIGNATURE_INVALID', b.signatureInvalid],
+    [409, 'FLIGHT_CANCELLED', b.flightCancelled],
+    [409, 'FLIGHT_ALREADY_DEPARTED', b.flightDeparted],
+    [409, 'BOARDING_PASS_WRONG_FLIGHT', b.wrongFlight],
+    [409, 'BOARDING_PASS_NOT_VALID', b.notValid],
+    [409, 'PASSENGER_NOT_CHECKED_IN', b.notCheckedIn],
+    [404, 'BOARDING_PASS_NOT_FOUND', b.notFound],
+    [409, 'ALREADY_BOARDED', b.alreadyBoarded],
+    [429, 'RATE_LIMIT_EXCEEDED', b.rateLimited],
+    [429, undefined, b.rateLimited],
+    [404, undefined, b.departureNotFound],
+  ] as const)('%i %s', (status, code, message) => {
+    expect(boardingErrorMessage(new ApiError({ status, code, detail: 'detalle técnico interno' }))).toBe(message);
+  });
+
+  it('un 404 genérico es "la salida no existe"; lo que no es de embarque usa el mensaje general', () => {
+    expect(boardingErrorMessage(new ApiError({ status: 0, code: 'NETWORK' }))).toBe(e.network);
+    expect(boardingErrorMessage(new ApiError({ status: 503 }))).toBe(e.unavailable503);
+    expect(boardingErrorMessage(new Error('x'))).toBe(e.unknown);
+  });
+
+  it('los textos de firma inválida avisan de un posible pase falsificado', () => {
+    expect(b.signatureInvalid).toMatch(/falsificado/);
   });
 });
 
