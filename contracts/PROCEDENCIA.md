@@ -12,8 +12,14 @@ responderán 404 contra la API desplegada**.
 | --- | --- |
 | Título | Quinde · API de Vuelos |
 | Versión (`info.version`) | 1.0.0 |
-| Rutas | 61, incluidas `/flights/v1/auth/*`, las 10 entidades de `/flights/v1/admin/*` y `audit-log`, `users` y `bookings` |
-| Copiado | 2026-10-10 |
+| Rutas | 67, incluidas `/flights/v1/auth/*`, las 10 entidades de `/flights/v1/admin/*`, `audit-log`, `users`, `bookings` y, desde F5, `admin/departures/{departureId}/boarding/scan` y `.../boarding/manifest` |
+| Copiado | 2026-11-12 (F5) |
+
+**Actualización F5 (2026-11-12).** Salió de la rama `main` de `backend_vuelos` (commit `942b619`, PR 14, fase F1: embarque, kiosko y
+salidas públicas), no de la API desplegada: el gateway de Azure no publica `/api/docs-json` sin autenticación. Se compiló `main` en
+una copia temporal, se arrancó con una base inexistente y credenciales desechables (`AUTH_MODE=local`) y se guardó el
+`GET /api/docs-json`, reformateado con sangría de 2 espacios. Trae `departureGate` en las salidas y las 6 rutas nuevas (2 de embarque
+de `admin`, 3 de `kiosk` y `airports/{iataCode}/departures`; el backoffice solo usa las dos de embarque).
 
 `npm run api:types` genera `src/shared/api/generated/backend.ts` (versionado, no se edita a mano) y
 `src/shared/api/contract.ts` solo les pone nombre corto (`Airport`, `CreateAirport`, `Departure`…).
