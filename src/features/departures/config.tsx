@@ -4,8 +4,7 @@ import type { ResourceConfig } from '@/shared/crud';
 import { es, fmt } from '@/shared/i18n';
 import { datetimeLocalToUtc, utcToDatetimeLocal, zoneLabel } from '@/shared/lib/dates';
 import { cabinLabel, statusLabel } from '@/shared/lib/labels';
-import { ZonedTime } from '@/shared/ui';
-import { DepartureStatusBadge } from './DepartureStatusBadge';
+import { DepartureStatusBadge, ZonedTime } from '@/shared/ui';
 import { departureEditSchema, type DepartureValues } from './schemas';
 
 const t = es.entities.departures;

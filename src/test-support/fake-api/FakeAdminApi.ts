@@ -14,6 +14,7 @@ import type {
 import { ApiError } from '@/shared/api/errors';
 import { nextUuid } from './ids';
 import { createFakeAdminExtras, FAKE_ADMIN_ID } from './fake-admin';
+import { createFakeBoarding, type FakeBoardingControls } from './fake-boarding';
 import { buildSeed, summarizeCabins, type AirportRow, type FakeState } from './seed';
 
 export interface FakeOptions {
@@ -70,7 +71,10 @@ interface Spec<Row extends Active, Out, C, U, D = Out> {
   noun: string;
 }
 
-export function createFakeAdminApi(options: FakeOptions = {}): AdminApi {
+/** `AdminApi` de prueba más los controles para armar un escenario de embarque (check-in, infantes, pases con firma). */
+export type FakeAdminApi = AdminApi & { boardingControls: FakeBoardingControls };
+
+export function createFakeAdminApi(options: FakeOptions = {}): FakeAdminApi {
   const now = options.now ?? (() => new Date());
   const latency = options.latencyMs ?? 80;
   const wait = () => (latency > 0 ? new Promise<void>((r) => setTimeout(r, latency)) : Promise.resolve());
@@ -371,6 +375,8 @@ export function createFakeAdminApi(options: FakeOptions = {}): AdminApi {
 
   const extras = createFakeAdminExtras({ now, wait, state: s, admin: FAKE_ACCOUNTS.admin, currentId: () => account.id });
 
+  const boarding = createFakeBoarding({ now, wait, state: s, bookings: extras.bookingDetails });
+
   const auth: AuthApi = {
     async login(c) {
       await wait();
@@ -394,5 +400,5 @@ export function createFakeAdminApi(options: FakeOptions = {}): AdminApi {
     },
   };
 
-  return { auth, countries, cities, airports, airlines, aircraftModels, fareFamilies, seatMaps, flightNumbers, departures, fares, admins: extras.admins, auditLog: extras.auditLog, bookings: extras.bookings };
+  return { auth, countries, cities, airports, airlines, aircraftModels, fareFamilies, seatMaps, flightNumbers, departures, fares, admins: extras.admins, auditLog: extras.auditLog, bookings: extras.bookings, boarding: boarding.api, boardingControls: boarding.controls };
 }

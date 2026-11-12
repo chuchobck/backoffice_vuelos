@@ -1,7 +1,7 @@
-import { AUDIT_LOG_PATH, BOOKINGS_PATH, RESOURCE_PATHS, type AdminApi, type AuthApi, type BookingsApi, type ListQuery, type Page, type Resource } from './AdminApi';
+import { AUDIT_LOG_PATH, BOOKINGS_PATH, boardingPath, RESOURCE_PATHS, type AdminApi, type AuthApi, type BoardingApi, type BookingsApi, type ListQuery, type Page, type Resource } from './AdminApi';
 import { authorized } from './authBridge';
 import type { HttpClient } from './http/client';
-import type { AdminUser, AuditEvent, BookingDetail, BookingSummary, CreateAdminUser, TokenResponseDto } from './contract';
+import type { AdminUser, AuditEvent, BoardingManifest, BoardingScanResult, BookingDetail, BookingSummary, CreateAdminUser, TokenResponseDto } from './contract';
 import { ApiError } from './errors';
 
 function listQuery(q: ListQuery = {}): Record<string, string> {
@@ -116,6 +116,18 @@ function bookingsApi(client: HttpClient): BookingsApi {
 }
 
 /**
+ * Puerta de embarque. El escaneo es una escritura: sin `retry` (un reintento tras un corte podría darle otro resultado
+ * al mismo pase). Un 404 aquí significa "la salida no existe" o "el pase no existe", no "falta el endpoint".
+ */
+function boardingApi(client: HttpClient): BoardingApi {
+  return {
+    scan: (departureId, barcode) =>
+      authorized(() => client.request<BoardingScanResult>('POST', boardingPath(departureId, 'scan'), { auth: true, body: { barcode } })),
+    manifest: (departureId) => authorized(() => client.request<BoardingManifest>('GET', boardingPath(departureId, 'manifest'), { auth: true, retry: true })),
+  };
+}
+
+/**
  * Implementación HTTP de `AdminApi` contra la API real (única que usa el cliente `fetch`). Qué ruta va a qué servicio:
  * `auth/*` y `admin/users` → identity; todo lo demás (catálogo, auditoría, reservas…) → core.
  */
@@ -137,5 +149,6 @@ export function createRealAdminApi({ core: client, identity }: ServiceClients): 
       list: (q) => ifEndpointExists(AUDIT_LOG_PATH, () => authorized(() => client.request<Page<AuditEvent>>('GET', AUDIT_LOG_PATH, { auth: true, retry: true, query: listQuery(q) }))),
     },
     bookings: bookingsApi(client),
+    boarding: boardingApi(client),
   };
 }

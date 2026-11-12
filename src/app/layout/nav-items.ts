@@ -1,5 +1,5 @@
 import {
-  Building2, CalendarClock, ClipboardList, FileClock, Globe2, LayoutDashboard, Layers, Map, MapPin, Plane, PlaneTakeoff, Route, Tags, Ticket, UserCog,
+  Building2, CalendarClock, ClipboardList, FileClock, Globe2, LayoutDashboard, Layers, Map, MapPin, Plane, PlaneTakeoff, Route, ScanBarcode, Tags, Ticket, UserCog,
   Users, type LucideIcon,
 } from 'lucide-react';
 import { es } from '@/shared/i18n';
@@ -34,6 +34,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: paths.flightNumbers, label: n.flightNumbers, icon: Plane },
       { to: paths.routes, label: n.routes, icon: Route },
       { to: paths.fares, label: n.fares, icon: Tags },
+      { to: paths.boarding, label: n.boarding, icon: ScanBarcode },
       { to: paths.bookings, label: n.bookings, icon: Ticket },
     ],
   },

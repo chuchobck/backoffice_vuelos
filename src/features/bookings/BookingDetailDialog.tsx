@@ -1,8 +1,9 @@
-import { useBooking, type BookingDetail } from '@/shared/api';
+import { useBooking, useManifests, type BookingDetail } from '@/shared/api';
 import { es, fmt } from '@/shared/i18n';
 import { ECUADOR_ZONE, formatLocal } from '@/shared/lib/dates';
 import { formatMoney } from '@/shared/lib/money';
 import { Badge, Button, Dialog, DialogContent, DialogDescription, DialogTitle, ErrorState, LoadingState, ZonedTime } from '@/shared/ui';
+import { PassengerCheckIn } from './PassengerCheckIn';
 import { canCancel, ownerLabel, STATUS_TONE, statusLabel, ticketStatusLabel } from './labels';
 
 const t = es.bookings;
@@ -18,6 +19,12 @@ function Section({ id, title, children }: { id: string; title: string; children:
 
 function Detail({ booking }: { booking: BookingDetail }) {
   const created = formatLocal(booking.createdAt, ECUADOR_ZONE);
+  // Check-in por pasajero: se carga al abrir el detalle (no antes), un manifiesto por cada salida donde alguien tiene asiento.
+  // Cada consulta falla o carga por su cuenta: un error aquí solo vuelve "No disponible" ese valor, nunca rompe el detalle.
+  const segments = booking.itineraries.flatMap((it) => it.segments);
+  const seated = new Set(booking.passengers.flatMap((p) => (p.assignedSeats ?? []).map((s) => s.segmentId)));
+  const departureIds = [...new Set(segments.map((s) => s.segmentId))].filter((id) => seated.has(id));
+  const manifests = new Map(useManifests(departureIds).map((query, i) => [departureIds[i]!, query] as const));
   return (
     <div className="flex flex-col gap-6">
       <Section id="bk-summary" title={t.sections.summary}>
@@ -59,7 +66,7 @@ function Detail({ booking }: { booking: BookingDetail }) {
 
       <Section id="bk-passengers" title={t.sections.passengers}>
         <div className="relative overflow-x-auto rounded border border-border">
-          <table className="w-full min-w-[30rem] border-collapse text-left text-sm">
+          <table className="w-full min-w-[40rem] border-collapse text-left text-sm">
             <caption className="sr-only">{t.sections.passengers}</caption>
             <thead>
               <tr className="bg-primary-tint">
@@ -68,6 +75,7 @@ function Detail({ booking }: { booking: BookingDetail }) {
                 <th scope="col" className="px-3 py-2">{t.passengerCols.document}</th>
                 <th scope="col" className="px-3 py-2">{t.passengerCols.seats}</th>
                 <th scope="col" className="px-3 py-2">{t.passengerCols.bags}</th>
+                <th scope="col" className="px-3 py-2">{t.passengerCols.checkIn}</th>
               </tr>
             </thead>
             <tbody>
@@ -78,11 +86,13 @@ function Detail({ booking }: { booking: BookingDetail }) {
                   <td className="px-3 py-2 font-mono">{p.documentNumber}</td>
                   <td className="px-3 py-2">{p.assignedSeats && p.assignedSeats.length > 0 ? p.assignedSeats.map((s) => s.seatNumber).join(', ') : t.noSeats}</td>
                   <td className="px-3 py-2">{(p.extraBaggage ?? []).reduce((n, b) => n + b.quantity, 0)}</td>
+                  <td className="px-3 py-2"><PassengerCheckIn passenger={p} pnr={booking.pnr} segments={segments} manifests={manifests} /></td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+        <p className="text-sm text-muted">{t.checkIn.note}</p>
       </Section>
 
       <Section id="bk-tickets" title={t.sections.tickets}>

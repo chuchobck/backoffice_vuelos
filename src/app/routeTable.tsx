@@ -14,6 +14,7 @@ import { LoginPage } from '@/pages/LoginPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { AdminsPage } from '@/pages/AdminsPage';
 import { AuditPage } from '@/pages/AuditPage';
+import { BoardingPage } from '@/pages/BoardingPage';
 import { BookingsPage } from '@/pages/BookingsPage';
 import { RoutesPage } from '@/pages/RoutesPage';
 import { SeatMapsPage } from '@/pages/SeatMapsPage';
@@ -43,6 +44,7 @@ export function buildRoutes(): RouteObject[] {
                 { path: paths.dashboard, element: <DashboardPage /> },
                 { path: paths.createFlight, element: <CreateFlightPage /> },
                 { path: paths.departures, element: <DeparturesPage /> },
+                { path: paths.boarding, element: <BoardingPage /> },
                 { path: paths.flightNumbers, element: <FlightNumbersPage /> },
                 { path: paths.routes, element: <RoutesPage /> },
                 { path: paths.fares, element: <FaresPage /> },

@@ -16,4 +16,6 @@ export { Toaster, toast } from './toast';
 export { DataTable, nextSort, sortRows, type Column, type SortState } from './data-table';
 export { ActiveBadge } from './active-badge';
 export { ZonedTime } from './zoned-time';
+export { DepartureStatusBadge } from './departure-status-badge';
+export { ProgressMeter } from './progress-meter';
 export { FareWarningList, fareWarningText } from './fare-warnings';
